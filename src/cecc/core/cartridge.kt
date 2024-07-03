@@ -10,7 +10,7 @@ class Cartridge(filepath: String) {
         return data[address.toInt()]
     }
 
-    fun writeRom(address: Int, data: UByte): Unit {
+    fun writeRom(address: UShort, data: UByte): Unit {
         println("WRITE ROM IS NOT SUPPORTED.")
     }
 }
