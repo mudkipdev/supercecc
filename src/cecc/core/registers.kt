@@ -3,7 +3,7 @@
 package cecc.core
 
 class Register {
-    val PC: UShort = 0xFFFCu
+    var PC: UShort = 0xFFFCu
     private val regs = Array<UByte>(5) { 0u }
 
     operator fun get(regType: RegType): UByte {
@@ -15,7 +15,7 @@ class Register {
     }
 
     operator fun get(flagType: FlagType): Int {
-        return (regs[4].toInt() ushr flagType.ordinal)
+        return (regs[RegType.SR.ordinal].toInt() ushr flagType.ordinal)
     }
 
     fun setFlag(flagType: FlagType) {
