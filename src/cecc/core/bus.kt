@@ -16,4 +16,8 @@ class Bus(private val cart: Cartridge) {
         }
     }
 
+    fun readWord(address: UShort): UShort {
+        return concat(readByte((address + 1u).toUShort()), readByte(address))
+    }
+
 }
