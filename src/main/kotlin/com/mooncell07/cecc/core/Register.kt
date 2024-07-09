@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
-package cecc.core
+package com.mooncell07.cecc.core
 
 class Register {
     var PC: UShort = 0xFFFCu

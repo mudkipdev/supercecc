@@ -1,4 +1,4 @@
-package cecc.core
+package com.mooncell07.cecc.core
 
 fun concat(hi: UByte, lo: UByte): UShort {
     return ((hi.toInt() shl 8) or lo.toInt()).toUShort()

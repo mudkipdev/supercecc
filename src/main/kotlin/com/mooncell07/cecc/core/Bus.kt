@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
-package cecc.core
+package com.mooncell07.cecc.core
 
 class Bus(private val cart: Cartridge) {
     fun readByte(address: UShort): UByte {
@@ -19,5 +19,4 @@ class Bus(private val cart: Cartridge) {
     fun readWord(address: UShort): UShort {
         return concat(readByte((address + 1u).toUShort()), readByte(address))
     }
-
 }

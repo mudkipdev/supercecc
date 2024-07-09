@@ -1,4 +1,4 @@
-package cecc.core
+package com.mooncell07.cecc.core
 
 import java.io.File
 
