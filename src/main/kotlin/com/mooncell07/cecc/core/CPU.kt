@@ -1,4 +1,4 @@
-package cecc.core
+package com.mooncell07.cecc.core
 
 typealias R = RegType
 typealias F = FlagType
