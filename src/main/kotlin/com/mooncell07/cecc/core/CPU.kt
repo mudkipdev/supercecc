@@ -4,7 +4,7 @@ typealias R = RegType
 typealias F = FlagType
 typealias AM = AddressingMode
 
-open class Stream(private val reg: Register, private val bus: Bus) {
+open class Stream(val reg: Register, val bus: Bus) {
     var mode: AddressingMode? = null
 
     fun fetch(): UByte {
@@ -67,4 +67,18 @@ open class Stream(private val reg: Register, private val bus: Bus) {
 
 class CPU(reg: Register, bus: Bus) : Stream(reg, bus) {
     var opcode: UByte = 0x00u
+
+    fun opLD(regType: R, data: UByte){
+        reg[regType] = data
+    }
+
+    fun opST(regType: R, address: UShort){
+        bus.writeByte(address, reg[regType])
+    }
+
+    fun opTrans(srcReg: R, destReg: R){
+        reg[destReg] = reg[srcReg]
+    }
+
+
 }
