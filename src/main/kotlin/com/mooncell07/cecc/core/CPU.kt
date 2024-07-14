@@ -1,33 +1,28 @@
 package com.mooncell07.cecc.core
 
-typealias R = RegType
-typealias F = FlagType
-typealias AM = AddressingMode
+open class Stream(
+    val reg: Register,
+    val bus: Bus,
+) {
+    fun fetch(): UByte = bus.readByte(reg.PC++)
 
-open class Stream(val reg: Register, val bus: Bus) {
-    var mode: AddressingMode? = null
-
-    fun fetch(): UByte {
-        return bus.readByte(reg.PC++)
-    }
-
-    fun fetchWord(): UShort {
+    private fun fetchWord(): UShort {
         val lo: UByte = fetch()
         val hi: UByte = fetch()
 
         return concat(hi, lo)
     }
 
-    fun read(): UByte {
-        return when (mode) {
+    fun read(mode: AddressingMode): UByte =
+        when (mode) {
             AM.IMMEDIATE -> fetch()
-            AM.ACCUMULATOR -> reg[R.A]
+            AM.ACCUMULATOR -> reg[RT.A]
             AM.ABSOLUTE -> bus.readByte(fetchWord())
-            AM.ABSOLUTE_X -> bus.readByte((fetchWord() + reg[R.X]).toUShort())
-            AM.ABSOLUTE_Y -> bus.readByte((fetchWord() + reg[R.Y]).toUShort())
+            AM.ABSOLUTE_X -> bus.readByte((fetchWord() + reg[RT.X]).toUShort())
+            AM.ABSOLUTE_Y -> bus.readByte((fetchWord() + reg[RT.Y]).toUShort())
 
             AM.X_INDIRECT -> {
-                val base = (fetch() + reg[R.X]).toUByte()
+                val base = (fetch() + reg[RT.X]).toUByte()
                 val ptrAddr = concat((base + 1u).toUByte(), base)
                 val ptr = bus.readWord(ptrAddr)
                 bus.readByte(ptr)
@@ -35,7 +30,7 @@ open class Stream(val reg: Register, val bus: Bus) {
 
             AM.INDIRECT_Y -> {
                 val base = fetch()
-                val ptrAddr = concat((base + 1u).toUByte(), base) + reg[R.Y]
+                val ptrAddr = concat((base + 1u).toUByte(), base) + reg[RT.Y]
                 val ptr = bus.readWord(ptrAddr.toUShort())
                 bus.readByte(ptr)
             }
@@ -43,42 +38,47 @@ open class Stream(val reg: Register, val bus: Bus) {
             AM.ZEROPAGE -> bus.readByte(fetch().toUShort())
 
             AM.ZEROPAGE_X -> {
-                val fullAddr = bus.readWord((fetch() + reg[R.X]).toUShort())
+                val fullAddr = bus.readWord((fetch() + reg[RT.X]).toUShort())
                 bus.readByte(fullAddr)
             }
 
             AM.ZEROPAGE_Y -> {
-                val fullAddr = bus.readWord((fetch() + reg[R.Y]).toUShort())
+                val fullAddr = bus.readWord((fetch() + reg[RT.Y]).toUShort())
                 bus.readByte(fullAddr)
             }
 
             else -> 0xFFu
         }
-    }
 
-    fun readIndirect(): UShort {
-        return bus.readWord(fetchWord())
-    }
+    fun readIndirect(): UShort = bus.readWord(fetchWord())
 
-    fun readRelative(): Byte {
-        return fetch().toByte()
-    }
+    fun readRelative(): Byte = fetch().toByte()
 }
 
-class CPU(reg: Register, bus: Bus) : Stream(reg, bus) {
-    var opcode: UByte = 0x00u
+class CPU(
+    reg: Register,
+    bus: Bus,
+) : Stream(reg, bus) {
+    var opcode: Int = 0x00
 
-    fun opLD(regType: R, data: UByte){
+    private fun opLD(
+        regType: RT,
+        data: UByte,
+    ) {
         reg[regType] = data
     }
 
-    fun opST(regType: R, address: UShort){
+    private fun opST(
+        regType: RT,
+        address: UShort,
+    ) {
         bus.writeByte(address, reg[regType])
     }
 
-    fun opTrans(srcReg: R, destReg: R){
+    private fun opTrans(
+        srcReg: RT,
+        destReg: RT,
+    ) {
         reg[destReg] = reg[srcReg]
     }
-
-
 }

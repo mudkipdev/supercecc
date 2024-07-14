@@ -1,7 +1,17 @@
 package com.mooncell07.cecc.core
 
-enum class RegType { A, X, Y, SP, SR }
-enum class FlagType { C, Z, I, D, V, N }
+enum class RegType { NONE, A, X, Y, SP, SR }
+
+enum class FlagType { NONE, C, Z, I, D, V, N }
+
+// Q suffixed labels have generalised destination types.
+enum class InstructionType {
+    BRK,
+    ORQ,
+    ASL,
+    PHQ,
+}
+
 enum class AddressingMode {
     ACCUMULATOR,
     ABSOLUTE,
@@ -15,5 +25,10 @@ enum class AddressingMode {
     RELATIVE,
     ZEROPAGE,
     ZEROPAGE_X,
-    ZEROPAGE_Y
+    ZEROPAGE_Y,
 }
+
+typealias RT = RegType
+typealias FT = FlagType
+typealias IT = InstructionType
+typealias AM = AddressingMode
