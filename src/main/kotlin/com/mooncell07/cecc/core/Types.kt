@@ -10,6 +10,14 @@ enum class InstructionType {
     ORQ,
     ASL,
     PHQ,
+    BPL,
+    CLQ,
+    JSR,
+    AND,
+    BIT,
+    ROL,
+    PLQ,
+    BRQ,
 }
 
 enum class AddressingMode {
