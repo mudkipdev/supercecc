@@ -23,6 +23,9 @@ enum class InstructionType {
     EOR,
     LSR,
     JMP,
+    RTS,
+    ADC,
+    ROR,
 }
 
 enum class AddressingMode {
