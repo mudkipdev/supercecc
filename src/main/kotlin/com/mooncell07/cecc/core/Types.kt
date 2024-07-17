@@ -5,6 +5,7 @@ enum class RegType { NONE, A, X, Y, SP, SR }
 enum class FlagType { NONE, C, Z, I, D, V, N }
 
 // Q suffixed labels have generalised destination types.
+// Register Transfer opcodes are exempted.
 enum class InstructionType {
     BRK,
     ORQ,
@@ -28,7 +29,12 @@ enum class InstructionType {
     ROR,
     STQ,
     DEQ,
-    TXQ,
+    TXA,
+    TYA,
+    TXS,
+    TAY,
+    TAX,
+    LDQ,
 }
 
 enum class AddressingMode {
