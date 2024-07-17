@@ -26,6 +26,9 @@ enum class InstructionType {
     RTS,
     ADC,
     ROR,
+    STQ,
+    DEQ,
+    TXQ,
 }
 
 enum class AddressingMode {
