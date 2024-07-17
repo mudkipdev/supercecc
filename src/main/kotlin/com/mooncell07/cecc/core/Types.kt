@@ -19,6 +19,10 @@ enum class InstructionType {
     PLQ,
     BRQ,
     SEQ,
+    RTI,
+    EOR,
+    LSR,
+    JMP,
 }
 
 enum class AddressingMode {
