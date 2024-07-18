@@ -4,7 +4,7 @@ open class Stream(
     val reg: Register,
     val bus: Bus,
 ) {
-    fun fetch(): UByte = bus.readByte(reg.PC++)
+    private fun fetch(): UByte = bus.readByte(reg.PC++)
 
     private fun fetchWord(): UShort {
         val lo: UByte = fetch()
@@ -13,7 +13,7 @@ open class Stream(
         return concat(hi, lo)
     }
 
-    fun read(mode: AddressingMode): UByte =
+    fun readSrc(mode: AddressingMode): UByte =
         when (mode) {
             AM.IMMEDIATE -> fetch()
             AM.ACCUMULATOR -> reg[RT.A]
@@ -50,34 +50,43 @@ open class Stream(
             else -> 0xFFu
         }
 
-    fun readIndirect(): UShort = bus.readWord(fetchWord())
+    fun readSrcInd(): UShort = bus.readWord(fetchWord())
 
-    fun readRelative(): Byte = fetch().toByte()
+    fun readSrcRel(): Byte = fetch().toByte()
+
+    fun writeDst(
+        r: RT,
+        value: UByte,
+    ) {
+        reg[r] = value
+    }
+
+    fun writeDst(
+        f: FT,
+        value: Boolean,
+    ): Unit = if (value) reg.setFlag(f) else reg.clearFlag(f)
 }
 
 class CPU(
     reg: Register,
     bus: Bus,
 ) : Stream(reg, bus) {
-    var opcode: Int = 0x00
-    var instr: INSTR? = INSTAB[0xEA]
-    val handlers: Array<INSTR?> = arrayOfNulls(256)
+    private var instr = INSTAB[0xEA]
+    private val handlers: MutableMap<IT, () -> Unit>
 
-    private fun opLD(instr: INSTR) {
-        reg[regType] = data
+    init {
+        handlers =
+            mutableMapOf(
+                IT.LOAD to { opLOAD() },
+                IT.STORE to { opSTORE() },
+            )
     }
 
-    private fun opST(
-        regType: RT,
-        address: UShort,
-    ) {
-        bus.writeByte(address, reg[regType])
+    private fun opLOAD() {
+        writeDst(instr.regType, readSrc(instr.addrMode))
     }
 
-    private fun opTrans(
-        srcReg: RT,
-        destReg: RT,
-    ) {
-        reg[destReg] = reg[srcReg]
+    private fun opSTORE() {
+        bus.writeByte(readSrc(instr.addrMode).toUShort(), reg[instr.regType])
     }
 }
