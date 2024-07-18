@@ -34,7 +34,9 @@ enum class InstructionType {
     TXS,
     TAY,
     TAX,
+    TSX,
     LDQ,
+    CPQ,
 }
 
 enum class AddressingMode {
