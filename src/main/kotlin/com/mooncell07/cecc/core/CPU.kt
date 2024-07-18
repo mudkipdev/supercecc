@@ -60,11 +60,10 @@ class CPU(
     bus: Bus,
 ) : Stream(reg, bus) {
     var opcode: Int = 0x00
+    var instr: INSTR? = INSTAB[0xEA]
+    val handlers: Array<INSTR?> = arrayOfNulls(256)
 
-    private fun opLD(
-        regType: RT,
-        data: UByte,
-    ) {
+    private fun opLD(instr: INSTR) {
         reg[regType] = data
     }
 

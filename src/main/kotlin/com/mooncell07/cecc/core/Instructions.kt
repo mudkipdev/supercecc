@@ -7,7 +7,7 @@ data class INSTR(
     val flagType: FT,
 )
 
-val INSTAB: Array<INSTR?> = arrayOfNulls(256)
+val INSTAB: Array<INSTR> = Array(256) { INSTR(IT.NONE, AM.NONE, RT.NONE, FT.NONE) }
 
 fun buildInstructionTable() {
     INSTAB[0x00] = INSTR(IT.BRK, AM.IMPLIED, RT.NONE, FT.NONE)
