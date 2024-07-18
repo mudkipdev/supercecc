@@ -16,7 +16,7 @@ enum class InstructionType {
     JMP, RTS, ADC, ROR,
     STORE, DECREMENT, TXA, TYA,
     TXS, TAY, TAX, TSX,
-    LOAD, COMPARE,
+    LOAD, COMPARE, INCREMENT
 }
 
 enum class AddressingMode {
