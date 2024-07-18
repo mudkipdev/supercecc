@@ -1,57 +1,28 @@
+@file:Suppress("ktlint")
+
 package com.mooncell07.cecc.core
 
 enum class RegType { NONE, A, X, Y, SP, SR }
 
 enum class FlagType { NONE, C, Z, I, D, V, N }
 
-// Q suffixed labels have generalised destination types.
+// Opcode Labels for generalised destination types differ from the standard labels.
 // Register Transfer opcodes are exempted.
 enum class InstructionType {
-    BRK,
-    ORQ,
-    ASL,
-    PHQ,
-    BPL,
-    CLQ,
-    JSR,
-    AND,
-    BIT,
-    ROL,
-    PLQ,
-    BRQ,
-    SEQ,
-    RTI,
-    EOR,
-    LSR,
-    JMP,
-    RTS,
-    ADC,
-    ROR,
-    STQ,
-    DEQ,
-    TXA,
-    TYA,
-    TXS,
-    TAY,
-    TAX,
-    TSX,
-    LDQ,
-    CPQ,
+    BRK, OR, ASL, PUSH,
+    BPL, CLEAR, JSR, AND,
+    BIT, ROL, PULL, BRANCH,
+    SET, RTI, EOR, LSR,
+    JMP, RTS, ADC, ROR,
+    STORE, DECREMENT, TXA, TYA,
+    TXS, TAY, TAX, TSX,
+    LOAD, COMPARE,
 }
 
 enum class AddressingMode {
-    ACCUMULATOR,
-    ABSOLUTE,
-    ABSOLUTE_X,
-    ABSOLUTE_Y,
-    IMMEDIATE,
-    IMPLIED,
-    INDIRECT,
-    X_INDIRECT,
-    INDIRECT_Y,
-    RELATIVE,
-    ZEROPAGE,
-    ZEROPAGE_X,
+    ACCUMULATOR, ABSOLUTE, ABSOLUTE_X, ABSOLUTE_Y,
+    IMMEDIATE, IMPLIED, INDIRECT, X_INDIRECT,
+    INDIRECT_Y, RELATIVE, ZEROPAGE, ZEROPAGE_X,
     ZEROPAGE_Y,
 }
 
