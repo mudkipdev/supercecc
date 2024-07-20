@@ -4,7 +4,7 @@ open class Stream(
     val reg: Register,
     val bus: Bus,
 ) {
-    private fun fetch(): UByte = bus.readByte(reg.PC++)
+    fun fetch(): UByte = bus.readByte(reg.PC++)
 
     private fun fetchWord(): UShort {
         val lo: UByte = fetch()
@@ -88,5 +88,14 @@ class CPU(
 
     private fun opSTORE() {
         bus.writeByte(readSrc(instr.addrMode).toUShort(), reg[instr.regType])
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    fun tick() {
+        val op = fetch().toInt()
+        instr = INSTAB[op]
+        println(instr)
+        println(reg.PC.toHexString())
+        handlers[instr.insType]?.invoke()
     }
 }

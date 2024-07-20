@@ -1,9 +1,8 @@
-@file:OptIn(ExperimentalUnsignedTypes::class)
 
 package com.mooncell07.cecc.core
 
 class Register {
-    var PC: UShort = 0xFFFCu
+    var PC: UShort = 0xC010u
 
     private val regs = Array<UByte>(5) { 0u }
 

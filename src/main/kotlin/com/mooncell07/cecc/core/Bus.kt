@@ -6,8 +6,8 @@ class Bus(
     private val cart: Cartridge,
 ) {
     fun readByte(address: UShort): UByte {
-        if (0xC010u <= address && address <= 0xFFFFu) {
-            return cart.readRom((address - 0xC010u).toUShort())
+        if (0xC000u <= address && address <= 0xFFFFu) {
+            return cart.readRom((address - 0xC000u).toUShort())
         }
 
         return 0xFFu
@@ -17,8 +17,8 @@ class Bus(
         address: UShort,
         data: UByte,
     ) {
-        if (0xC010u <= address && address <= 0xFFFFu) {
-            cart.writeRom((address - 0xC010u).toUShort(), data)
+        if (0xC000u <= address && address <= 0xFFFFu) {
+            cart.writeRom((address - 0xC000u).toUShort(), data)
         }
     }
 
