@@ -7,6 +7,8 @@ import com.mooncell07.cecc.core.*
 
 class Emulator {
     private val cart = Cartridge("roms/nestest.nes")
+
+    @OptIn(ExperimentalUnsignedTypes::class)
     private val cpu = CPU(Register(), Bus(cart))
 
     init {

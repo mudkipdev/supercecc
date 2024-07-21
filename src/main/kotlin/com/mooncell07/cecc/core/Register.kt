@@ -2,6 +2,7 @@
 package com.mooncell07.cecc.core
 
 class Register {
+    @Suppress("ktlint:standard:property-naming", "PropertyName")
     var PC: UShort = 0xC000u
 
     private val regs = Array<UByte>(5) { 0u }
