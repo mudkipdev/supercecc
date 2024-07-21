@@ -1,4 +1,10 @@
+@file:Suppress("FunctionName")
+
 package com.mooncell07.cecc.core
+
+fun MSB(value: UShort): UByte = (value.toInt() shr 8).toUByte()
+
+fun LSB(value: UShort): UByte = (value.toInt() and 0xFF).toUByte()
 
 fun concat(
     hi: UByte,

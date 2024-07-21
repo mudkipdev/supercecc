@@ -5,6 +5,7 @@ open class Stream(
     val bus: Bus,
 ) {
     private val addrHandlers: MutableMap<AM, () -> UByte>
+    private val stack: MutableList<UByte> = MutableList(0xFF) { 0u }
 
     init {
         addrHandlers =
@@ -89,13 +90,24 @@ open class Stream(
         f: FT,
         value: Boolean,
     ): Unit = if (value) reg.setFlag(f) else reg.clearFlag(f)
+
+    fun push(data: UByte) {
+        stack[reg[RT.SP].toInt()] = data
+        reg[RT.SP]--
+    }
+
+    fun pop(): UByte {
+        val res = stack[reg[RT.SP].toInt()]
+        reg[RT.SP]++
+        return res
+    }
 }
 
 class CPU(
     reg: Register,
     bus: Bus,
 ) : Stream(reg, bus) {
-    private var instr = INSTAB[0xEA]
+    var instr = INSTAB[0xEA]
     private val handlers: MutableMap<IT, () -> Unit>
 
     init {
@@ -104,6 +116,9 @@ class CPU(
                 IT.LOAD to { opLOAD() },
                 IT.STORE to { opSTORE() },
                 IT.JMP to { opJMP() },
+                IT.JSR to { opJSR() },
+                IT.NOP to { opNOP() },
+                IT.SET to { opSET() },
             )
     }
 
@@ -122,6 +137,20 @@ class CPU(
                 AM.INDIRECT -> getInd()
                 else -> 0xFFu
             }
+    }
+
+    private fun opJSR() {
+        push(LSB(reg.PC))
+        push(MSB(reg.PC))
+        opJMP()
+    }
+
+    private fun opNOP() {
+        return
+    }
+
+    private fun opSET() {
+        reg.setFlag(instr.flagType)
     }
 
     fun tick() {

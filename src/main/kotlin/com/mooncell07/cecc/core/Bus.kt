@@ -7,29 +7,27 @@ class Bus(
     private val zeroPage: UByteArray = UByteArray(0xFF) { 0u },
 ) {
     @OptIn(ExperimentalUnsignedTypes::class)
-    fun readByte(address: UShort): UByte {
-        if (address < 0xFFu) {
-            return zeroPage[address.toInt()]
+    fun readByte(address: UShort): UByte =
+        if (address < 0x00FFu) {
+            zeroPage[address.toInt()]
+        } else if (0xC000u <= address && address <= 0xFFFFu) {
+            cart.readRom((address - 0xC000u + 0x10u).toUShort())
+        } else {
+            throw IndexOutOfBoundsException("The address: $address is not mapped to any READABLE devices.")
         }
-        if (0xC000u <= address && address <= 0xFFFFu) {
-            return cart.readRom((address - 0xC000u + 0x10u).toUShort())
-        }
-
-        throw IndexOutOfBoundsException("The address: $address is not mapped to any devices")
-    }
 
     @OptIn(ExperimentalUnsignedTypes::class)
     fun writeByte(
         address: UShort,
         data: UByte,
     ) {
-        if (address < 0xFFu) {
+        if (address <= 0xFFu) {
             zeroPage[address.toInt()] = data
-        }
-        if (0xC000u <= address && address <= 0xFFFFu) {
+        } else if (0xC000u <= address && address <= 0xFFFFu) {
             cart.writeRom((address - 0xC000u).toUShort(), data)
+        } else {
+            throw IndexOutOfBoundsException("The address: $address is not mapped to any WRITEABLE devices.")
         }
-        throw IndexOutOfBoundsException("The address: $address is not mapped to any devices")
     }
 
     fun readWord(address: UShort): UShort = concat(readByte((address + 1u).toUShort()), readByte(address))
