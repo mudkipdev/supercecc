@@ -2,7 +2,7 @@
 package com.mooncell07.cecc.core
 
 class Register {
-    var PC: UShort = 0xC010u
+    var PC: UShort = 0xC000u
 
     private val regs = Array<UByte>(5) { 0u }
 

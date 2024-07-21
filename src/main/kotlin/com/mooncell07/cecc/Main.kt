@@ -14,7 +14,9 @@ class Emulator {
     }
 
     fun tick() {
-        cpu.tick()
+        for (i in 0..5) {
+            cpu.tick()
+        }
     }
 }
 

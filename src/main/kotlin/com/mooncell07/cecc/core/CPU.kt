@@ -6,7 +6,7 @@ open class Stream(
 ) {
     fun fetch(): UByte = bus.readByte(reg.PC++)
 
-    private fun fetchWord(): UShort {
+    fun fetchWord(): UShort {
         val lo: UByte = fetch()
         val hi: UByte = fetch()
 
@@ -79,6 +79,7 @@ class CPU(
             mutableMapOf(
                 IT.LOAD to { opLOAD() },
                 IT.STORE to { opSTORE() },
+                IT.JMP to { opJMP() },
             )
     }
 
@@ -90,12 +91,20 @@ class CPU(
         bus.writeByte(readSrc(instr.addrMode).toUShort(), reg[instr.regType])
     }
 
+    private fun opJMP() {
+        reg.PC =
+            when (instr.addrMode) {
+                AM.ABSOLUTE -> fetchWord()
+                AM.INDIRECT -> readSrcInd()
+                else -> 0xFFu
+            }
+    }
+
     @OptIn(ExperimentalStdlibApi::class)
     fun tick() {
         val op = fetch().toInt()
         instr = INSTAB[op]
-        println(instr)
-        println(reg.PC.toHexString())
         handlers[instr.insType]?.invoke()
+        println("$instr ${reg.PC.toHexString()} ${bus.readWord(reg.PC).toHexString()}")
     }
 }
