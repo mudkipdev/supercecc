@@ -29,7 +29,7 @@ class Register {
         if (flagType == FT.NONE) {
             throw IllegalAccessError("Invalid FLAGGET attempt for Register Type `NONE`.")
         }
-        return (regs[RT.SR.ordinal].toInt() ushr flagType.ordinal + 1)
+        return testBit(regs[RT.SR.ordinal].toInt(), flagType.ordinal - 1)
     }
 
     fun setFlag(flagType: FT) {
@@ -37,7 +37,7 @@ class Register {
             throw IllegalAccessError("Invalid FLAGSET attempt for Register Type `NONE`.")
         }
         val idx = RT.SR.ordinal
-        regs[idx] = setBit(regs[idx].toInt(), flagType.ordinal + 1).toUByte()
+        regs[idx] = setBit(regs[idx].toInt(), flagType.ordinal - 1).toUByte()
     }
 
     fun clearFlag(flagType: FT) {
@@ -45,6 +45,6 @@ class Register {
             throw IllegalAccessError("Invalid FLAGCLEAR attempt for Register Type `NONE`.")
         }
         val idx = RT.SR.ordinal
-        regs[idx] = clearBit(regs[idx].toInt(), flagType.ordinal + 1).toUByte()
+        regs[idx] = clearBit(regs[idx].toInt(), flagType.ordinal - 1).toUByte()
     }
 }

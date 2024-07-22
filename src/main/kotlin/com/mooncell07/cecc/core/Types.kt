@@ -10,14 +10,14 @@ enum class FlagType { NONE, C, Z, I, D, V, N }
 // Register Transfer opcodes are exempted.
 enum class InstructionType {
     NONE, BRK, OR, ASL,
-    PUSH, BPL, CLEAR, JSR,
+    PUSH, CLEAR, JSR, EOR,
     AND, BIT, ROL, PULL,
-    BRANCH, SET, RTI, EOR,
+    BRSET, BRCLR, SET, RTI,
     LSR, JMP, RTS, ADC,
     ROR, STORE, DECREMENT, TXA,
     TYA, TXS, TAY, TAX,
     TSX, LOAD, COMPARE, INCREMENT,
-    SBC, NOP,
+    SBC, NOP
 }
 
 enum class AddressingMode {

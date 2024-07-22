@@ -77,7 +77,7 @@ open class Stream(
 
     fun getInd(): UShort = bus.readWord(fetchWord())
 
-    fun getRel(): Byte = fetch().toByte()
+    fun getRel(): UShort = fetch().toByte().toUShort()
 
     fun writeDst(
         r: RT,
@@ -119,6 +119,9 @@ class CPU(
                 IT.JSR to { opJSR() },
                 IT.NOP to { opNOP() },
                 IT.SET to { opSET() },
+                IT.BRCLR to { opBRANCH() },
+                IT.BRSET to { opBRANCH() },
+                IT.CLEAR to { opCLEAR() },
             )
     }
 
@@ -151,6 +154,27 @@ class CPU(
 
     private fun opSET() {
         reg.setFlag(instr.flagType)
+    }
+
+    private fun opBRANCH() {
+        val offset = getRel()
+        when (instr.insType) {
+            IT.BRSET -> {
+                if (reg[instr.flagType] == 1) {
+                    reg.PC = (reg.PC + offset).toUShort()
+                }
+            }
+            IT.BRCLR -> {
+                if (reg[instr.flagType] == 0) {
+                    reg.PC = (reg.PC + offset).toUShort()
+                }
+            }
+            else -> println("Unsupported type.")
+        }
+    }
+
+    private fun opCLEAR() {
+        reg.clearFlag(instr.flagType)
     }
 
     fun tick() {
