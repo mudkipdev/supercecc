@@ -104,7 +104,7 @@ open class Stream(
 }
 
 class CPU(
-    reg: Register,
+    reg: Register = Register(),
     bus: Bus,
 ) : Stream(reg, bus) {
     var instr = INSTAB[0xEA]

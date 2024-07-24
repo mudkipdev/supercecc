@@ -1,0 +1,3 @@
+# noinspection EditorConfigKeyCorrectness
+[*.{kt,kts}]
+ktlint_standard_no-wildcard-imports = disabled

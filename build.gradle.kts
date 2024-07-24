@@ -9,8 +9,18 @@ version = "0.1.0"
 
 kotlin {
     jvmToolchain(21)
+    sourceSets {
+        all {
+            languageSettings.optIn("kotlin.ExperimentalUnsignedTypes")
+            languageSettings.optIn("kotlin.ExperimentalStdlibApi")
+        }
+    }
 }
 
 repositories {
     mavenCentral()
+}
+
+dependencies {
+    implementation("com.google.code.gson:gson:2.11.0")
 }

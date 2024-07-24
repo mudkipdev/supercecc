@@ -39,4 +39,5 @@ bin/
 .DS_Store
 
 roms/
+json-tests/
 Test.kt
