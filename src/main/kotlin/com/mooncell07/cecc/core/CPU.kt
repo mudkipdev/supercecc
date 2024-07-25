@@ -1,31 +1,42 @@
 package com.mooncell07.cecc.core
 
-open class Stream(
-    val reg: Register,
-    val bus: Bus,
+class CPU(
+    private val bus: Bus,
 ) {
-    private val addrHandlers: MutableMap<AM, () -> UByte>
-    private val stack: MutableList<UByte> = MutableList(0xFF) { 0u }
+    val reg: Register = Register()
+    var instr: INSTR = INSTAB[0xEA]
 
-    init {
-        addrHandlers =
-            mutableMapOf(
-                AM.IMMEDIATE to { getImm() },
-                AM.ACCUMULATOR to { getAcc() },
-                AM.ABSOLUTE to { getAbs() },
-                AM.ABSOLUTE_X to { getAbsX() },
-                AM.ABSOLUTE_Y to { getAbsY() },
-                AM.X_INDIRECT to { getXInd() },
-                AM.INDIRECT_Y to { getIndY() },
-                AM.ZEROPAGE to { getZP() },
-                AM.ZEROPAGE_X to { getZPX() },
-                AM.ZEROPAGE_Y to { getZPY() },
-            )
-    }
+    private val executors: Map<IT, () -> Unit> =
+        mapOf(
+            IT.LOAD to { opLOAD() },
+            IT.STORE to { opSTORE() },
+            IT.JMP to { opJMP() },
+            IT.JSR to { opJSR() },
+            IT.NOP to { opNOP() },
+            IT.SET to { opSET() },
+            IT.BRCLR to { opBRANCH() },
+            IT.BRSET to { opBRANCH() },
+            IT.CLEAR to { opCLEAR() },
+        )
+    private val decoders: Map<AM, () -> UByte> =
+        mapOf(
+            AM.IMMEDIATE to { getImm() },
+            AM.ACCUMULATOR to { getAcc() },
+            AM.ABSOLUTE to { getAbs() },
+            AM.ABSOLUTE_X to { getAbsX() },
+            AM.ABSOLUTE_Y to { getAbsY() },
+            AM.X_INDIRECT to { getXInd() },
+            AM.INDIRECT_Y to { getIndY() },
+            AM.ZEROPAGE to { getZP() },
+            AM.ZEROPAGE_X to { getZPX() },
+            AM.ZEROPAGE_Y to { getZPY() },
+        )
 
-    fun fetch(): UByte = bus.readByte(reg.PC++)
+    private val stack: UByteArray = UByteArray(0xFF) { 0u }
 
-    fun fetchWord(): UShort {
+    private fun fetch(): UByte = bus.readByte(reg.PC++)
+
+    private fun fetchWord(): UShort {
         val lo: UByte = fetch()
         val hi: UByte = fetch()
 
@@ -68,61 +79,38 @@ open class Stream(
         return bus.readByte(fullAddr)
     }
 
-    fun readSrc(mode: AddressingMode): UByte {
+    private fun readSrc(mode: AddressingMode): UByte {
         if (mode == AM.INDIRECT || mode == AM.RELATIVE) {
             throw IllegalArgumentException("readSrc() does not support INDIRECT and RELATIVE modes.")
         }
-        return addrHandlers[mode]!!.invoke()
+        return decoders[mode]!!.invoke()
     }
 
-    fun getInd(): UShort = bus.readWord(fetchWord())
+    private fun getInd(): UShort = bus.readWord(fetchWord())
 
-    fun getRel(): UShort = fetch().toByte().toUShort()
+    private fun getRel(): UShort = fetch().toByte().toUShort()
 
-    fun writeDst(
+    private fun writeDst(
         r: RT,
         value: UByte,
     ) {
         reg[r] = value
     }
 
-    fun writeDst(
+    private fun writeDst(
         f: FT,
         value: Boolean,
     ): Unit = if (value) reg.setFlag(f) else reg.clearFlag(f)
 
-    fun push(data: UByte) {
+    private fun push(data: UByte) {
         stack[reg[RT.SP].toInt()] = data
         reg[RT.SP]--
     }
 
-    fun pop(): UByte {
+    private fun pop(): UByte {
         val res = stack[reg[RT.SP].toInt()]
         reg[RT.SP]++
         return res
-    }
-}
-
-class CPU(
-    reg: Register = Register(),
-    bus: Bus,
-) : Stream(reg, bus) {
-    var instr = INSTAB[0xEA]
-    private val handlers: MutableMap<IT, () -> Unit>
-
-    init {
-        handlers =
-            mutableMapOf(
-                IT.LOAD to { opLOAD() },
-                IT.STORE to { opSTORE() },
-                IT.JMP to { opJMP() },
-                IT.JSR to { opJSR() },
-                IT.NOP to { opNOP() },
-                IT.SET to { opSET() },
-                IT.BRCLR to { opBRANCH() },
-                IT.BRSET to { opBRANCH() },
-                IT.CLEAR to { opCLEAR() },
-            )
     }
 
     private fun opLOAD() {
@@ -138,7 +126,7 @@ class CPU(
             when (instr.addrMode) {
                 AM.ABSOLUTE -> fetchWord()
                 AM.INDIRECT -> getInd()
-                else -> 0xFFu
+                else -> throw IllegalArgumentException("Unsupported Addressing Mode: ${instr.addrMode}")
             }
     }
 
@@ -148,9 +136,7 @@ class CPU(
         opJMP()
     }
 
-    private fun opNOP() {
-        return
-    }
+    private fun opNOP() {}
 
     private fun opSET() {
         reg.setFlag(instr.flagType)
@@ -158,18 +144,15 @@ class CPU(
 
     private fun opBRANCH() {
         val offset = getRel()
-        when (instr.insType) {
-            IT.BRSET -> {
-                if (reg[instr.flagType] == 1) {
-                    reg.PC = (reg.PC + offset).toUShort()
-                }
+        val flag =
+            when (instr.insType) {
+                IT.BRSET -> reg[instr.flagType] == 1
+                IT.BRCLR -> reg[instr.flagType] == 0
+                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
-            IT.BRCLR -> {
-                if (reg[instr.flagType] == 0) {
-                    reg.PC = (reg.PC + offset).toUShort()
-                }
-            }
-            else -> println("Unsupported type.")
+
+        if (flag) {
+            reg.PC = (reg.PC + offset).toUShort()
         }
     }
 
@@ -178,8 +161,8 @@ class CPU(
     }
 
     fun tick() {
-        val op = fetch().toInt()
-        instr = INSTAB[op]
-        handlers[instr.insType]?.invoke()
+        instr = INSTAB[fetch().toInt()]
+        assert(instr.insType != IT.NONE) { "${instr.insType} is an illegal instruction type." }
+        executors[instr.insType]?.invoke()
     }
 }

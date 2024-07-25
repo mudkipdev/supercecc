@@ -2,7 +2,6 @@ package com.mooncell07.cecc.core
 
 import java.io.File
 
-@ExperimentalUnsignedTypes
 class Cartridge(
     filepath: String,
 ) {

@@ -26,12 +26,14 @@ class InstructionTest(
     filepath: String,
 ) : BaseEmulator() {
     private var tests: Array<Test>
+    private val opcode: String
     private val after: State = State(0u, 0u, 0u, 0u, 0u, 0u, mutableListOf(listOf()))
 
     init {
         val gson = Gson()
-        val f = File(filepath).readText()
-        tests = gson.fromJson(f, Array<Test>::class.java)
+        val file = File(filepath)
+        opcode = file.name.removeSuffix(".json").uppercase()
+        tests = gson.fromJson(file.readText(), Array<Test>::class.java)
     }
 
     private fun setEmuState(test: Test) {
@@ -43,7 +45,7 @@ class InstructionTest(
         cpu.reg[RT.SR] = test.initial.SR
 
         for (ramState in test.initial.ram) {
-            cpu.bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte())
+            bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte())
         }
     }
 
@@ -57,25 +59,25 @@ class InstructionTest(
 
         after.ram = MutableList(test.final.ram.size) { listOf(2) }
         for ((i, ramState) in test.final.ram.withIndex()) {
-            after.ram[i] = listOf(ramState[0], cpu.bus.readByte(ramState[0].toUShort()).toInt())
+            after.ram[i] = listOf(ramState[0], bus.readByte(ramState[0].toUShort()).toInt())
         }
     }
 
-    private fun compare(test: Test) {
+    private fun compare(
+        index: Int,
+        test: Test,
+    ) {
         parseState(test)
-        if (test.final != after) {
-            println("MINE: ${test.final}\nYOURS: $after\n\n")
-        } else {
-            println("PASSED!")
-        }
+        assert(test.final == after) { "\n[$$opcode FAILED @ $index]\nMINE: ${test.final}\nYOURS: $after" }
     }
 
     fun run() {
-        for (test in tests) {
+        for ((i, test) in tests.withIndex()) {
             setEmuState(test)
             cpu.tick()
-            compare(test)
+            compare(i, test)
         }
+        println("[$$opcode]: PASSED!")
     }
 }
 

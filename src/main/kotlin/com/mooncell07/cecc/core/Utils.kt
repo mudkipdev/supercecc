@@ -1,5 +1,3 @@
-@file:Suppress("FunctionName")
-
 package com.mooncell07.cecc.core
 
 fun MSB(value: UShort): UByte = (value.toInt() shr 8).toUByte()
