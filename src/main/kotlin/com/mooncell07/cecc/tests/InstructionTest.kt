@@ -44,6 +44,8 @@ class InstructionTest(
         cpu.reg[RT.SP] = test.initial.SP
         cpu.reg[RT.SR] = test.initial.SR
 
+        // println("${cpu.reg[RT.SR]} ${test.initial.SR} ${test.final.SR}")
+
         for (ramState in test.initial.ram) {
             bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte())
         }
@@ -68,7 +70,7 @@ class InstructionTest(
         test: Test,
     ) {
         parseState(test)
-        assert(test.final == after) { "\n[$$opcode FAILED @ $index]\nMINE: ${test.final}\nYOURS: $after" }
+        assert(test.final == after) { "\n[$$opcode FAILED @ <TEST: $index NAME: ${test.name}>]\nMINE: ${test.final}\nYOURS: $after" }
     }
 
     fun run() {

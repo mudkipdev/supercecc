@@ -19,20 +19,17 @@ class Register {
         regs[regType.ordinal] = data
     }
 
-    operator fun get(flagType: FT): Int {
+    operator fun get(flagType: FT): Boolean {
         assert(flagType != FT.NONE) { "$flagType type flag is not supported for FLAGGET." }
         return testBit(regs[RT.SR.ordinal].toInt(), flagType.ordinal - 1)
     }
 
-    fun setFlag(flagType: FT) {
+    operator fun set(
+        flagType: FT,
+        flagv: Boolean,
+    ) {
         assert(flagType != FT.NONE) { "$flagType type flag is not supported for FLAGSET." }
         val idx = RT.SR.ordinal
-        regs[idx] = setBit(regs[idx].toInt(), flagType.ordinal - 1).toUByte()
-    }
-
-    fun clearFlag(flagType: FT) {
-        assert(flagType != FT.NONE) { "$flagType type flag is not supported for FLAGCLEAR." }
-        val idx = RT.SR.ordinal
-        regs[idx] = clearBit(regs[idx].toInt(), flagType.ordinal - 1).toUByte()
+        regs[idx] = handleBit(regs[idx].toInt(), flagType.ordinal - 1, flagv).toUByte()
     }
 }

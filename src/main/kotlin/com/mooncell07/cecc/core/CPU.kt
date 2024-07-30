@@ -55,15 +55,13 @@ class CPU(
 
     private fun getXInd(): UByte {
         val base = (fetch() + reg[RT.X]).toUByte()
-        val ptrAddr = concat((base + 1u).toUByte(), base)
-        val ptr = bus.readWord(ptrAddr)
+        val ptr = bus.readWord(base.toUShort())
         return bus.readByte(ptr)
     }
 
     private fun getIndY(): UByte {
         val base = fetch()
-        val ptrAddr = concat((base + 1u).toUByte(), base) + reg[RT.Y]
-        val ptr = bus.readWord(ptrAddr.toUShort())
+        val ptr = (bus.readWord(base.toUShort()) + reg[RT.Y].toUShort()).toUShort()
         return bus.readByte(ptr)
     }
 
@@ -90,18 +88,6 @@ class CPU(
 
     private fun getRel(): UShort = fetch().toByte().toUShort()
 
-    private fun writeDst(
-        r: RT,
-        value: UByte,
-    ) {
-        reg[r] = value
-    }
-
-    private fun writeDst(
-        f: FT,
-        value: Boolean,
-    ): Unit = if (value) reg.setFlag(f) else reg.clearFlag(f)
-
     private fun push(data: UByte) {
         stack[reg[RT.SP].toInt()] = data
         reg[RT.SP]--
@@ -114,7 +100,10 @@ class CPU(
     }
 
     private fun opLOAD() {
-        writeDst(instr.regType, readSrc(instr.addrMode))
+        val data = readSrc(instr.addrMode)
+        reg[instr.regType] = data
+        reg[FT.N] = testBit(data.toInt(), 7)
+        reg[FT.Z] = data.toInt() == 0
     }
 
     private fun opSTORE() {
@@ -139,15 +128,15 @@ class CPU(
     private fun opNOP() {}
 
     private fun opSET() {
-        reg.setFlag(instr.flagType)
+        reg[instr.flagType] = true
     }
 
     private fun opBRANCH() {
         val offset = getRel()
         val flag =
             when (instr.insType) {
-                IT.BRSET -> reg[instr.flagType] == 1
-                IT.BRCLR -> reg[instr.flagType] == 0
+                IT.BRSET -> reg[instr.flagType]
+                IT.BRCLR -> !reg[instr.flagType]
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
 
@@ -157,7 +146,7 @@ class CPU(
     }
 
     private fun opCLEAR() {
-        reg.clearFlag(instr.flagType)
+        reg[instr.flagType] = false
     }
 
     fun tick() {

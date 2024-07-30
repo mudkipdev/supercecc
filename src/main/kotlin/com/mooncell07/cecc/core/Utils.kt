@@ -7,7 +7,7 @@ fun LSB(value: UShort): UByte = (value.toInt() and 0xFF).toUByte()
 fun testBit(
     value: Int,
     pos: Int,
-): Int = (value and (1 shr pos))
+): Boolean = value and (1 shl pos) != 0
 
 fun concat(
     hi: UByte,
@@ -23,3 +23,9 @@ fun clearBit(
     v: Int,
     pos: Int,
 ): Int = v and (1 shl pos).inv()
+
+fun handleBit(
+    v: Int,
+    pos: Int,
+    flagv: Boolean,
+) = if (flagv) setBit(v, pos) else clearBit(v, pos)
