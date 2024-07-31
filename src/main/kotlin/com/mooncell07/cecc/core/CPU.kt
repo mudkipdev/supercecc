@@ -54,7 +54,7 @@ class CPU(
     private fun getAbsY(): UByte = bus.readByte((fetchWord() + reg[RT.Y]).toUShort())
 
     private fun getXInd(): UByte {
-        val base = (fetch() + reg[RT.X]).toUByte()
+        val base = (fetch() + reg[RT.X]) % 0x100u
         val ptr = bus.readWord(base.toUShort())
         return bus.readByte(ptr)
     }
