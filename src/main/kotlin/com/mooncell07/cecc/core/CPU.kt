@@ -18,10 +18,8 @@ class CPU(
             IT.BRSET to { opBRANCH() },
             IT.CLEAR to { opCLEAR() },
         )
-    private val decoders: Map<AM, () -> UByte> =
+    private val decoders: Map<AM, () -> UShort> =
         mapOf(
-            AM.IMMEDIATE to { getImm() },
-            AM.ACCUMULATOR to { getAcc() },
             AM.ABSOLUTE to { getAbs() },
             AM.ABSOLUTE_X to { getAbsX() },
             AM.ABSOLUTE_Y to { getAbsY() },
@@ -30,6 +28,8 @@ class CPU(
             AM.ZEROPAGE to { getZP() },
             AM.ZEROPAGE_X to { getZPX() },
             AM.ZEROPAGE_Y to { getZPY() },
+            AM.RELATIVE to { getRel() },
+            AM.INDIRECT to { getInd() },
         )
 
     private val stack: UByteArray = UByteArray(0xFF) { 0u }
@@ -47,40 +47,44 @@ class CPU(
 
     private fun getAcc(): UByte = reg[RT.A]
 
-    private fun getAbs(): UByte = bus.readByte(fetchWord())
+    private fun getAbs(): UShort = fetchWord()
 
-    private fun getAbsX(): UByte = bus.readByte((fetchWord() + reg[RT.X]).toUShort())
+    private fun getAbsX(): UShort = (fetchWord() + reg[RT.X]).toUShort()
 
-    private fun getAbsY(): UByte = bus.readByte((fetchWord() + reg[RT.Y]).toUShort())
+    private fun getAbsY(): UShort = (fetchWord() + reg[RT.Y]).toUShort()
 
-    private fun getXInd(): UByte {
-        val base = (fetch() + reg[RT.X]) % 0x100u
-        val ptr = bus.readWord(base.toUShort())
-        return bus.readByte(ptr)
-    }
+    private fun getZP(): UShort = fetch().toUShort()
 
-    private fun getIndY(): UByte {
-        val base = fetch()
-        val ptr = (bus.readWord(base.toUShort()) + reg[RT.Y].toUShort()).toUShort()
-        return bus.readByte(ptr)
-    }
+    private fun getZPX(): UShort = ((fetch() + reg[RT.X]) % 0x100u).toUShort()
 
-    private fun getZP(): UByte = bus.readByte(fetch().toUShort())
-
-    private fun getZPX(): UByte = bus.readByte(((fetch() + reg[RT.X]) % 0x100u).toUShort())
-
-    private fun getZPY(): UByte = bus.readByte(((fetch() + reg[RT.Y]) % 0x100u).toUShort())
-
-    private fun readSrc(mode: AddressingMode): UByte {
-        if (mode == AM.INDIRECT || mode == AM.RELATIVE) {
-            throw IllegalArgumentException("readSrc() does not support INDIRECT and RELATIVE modes.")
-        }
-        return decoders[mode]!!.invoke()
-    }
+    private fun getZPY(): UShort = ((fetch() + reg[RT.Y]) % 0x100u).toUShort()
 
     private fun getInd(): UShort = bus.readWord(fetchWord())
 
     private fun getRel(): UShort = fetch().toByte().toUShort()
+
+    private fun getXInd(): UShort {
+        val base = (fetch() + reg[RT.X]) % 0x100u
+        return bus.readWord(base.toUShort())
+    }
+
+    private fun getIndY(): UShort {
+        val base = fetch()
+        return (bus.readWord(base.toUShort()) + reg[RT.Y].toUShort()).toUShort()
+    }
+
+    private fun readSrc8(mode: AddressingMode): UByte {
+        if (mode == AM.INDIRECT || mode == AM.RELATIVE) {
+            throw IllegalArgumentException("readSrc() does not support INDIRECT and RELATIVE modes.")
+        }
+        return when (mode) {
+            AM.IMMEDIATE -> getImm()
+            AM.ACCUMULATOR -> getAcc()
+            else -> bus.readByte(decoders[mode]!!.invoke())
+        }
+    }
+
+    private fun readSrc16(mode: AddressingMode): UShort = decoders[mode]!!.invoke()
 
     private fun push(data: UByte) {
         stack[reg[RT.SP].toInt()] = data
@@ -94,23 +98,18 @@ class CPU(
     }
 
     private fun opLOAD() {
-        val data = readSrc(instr.addrMode)
+        val data = readSrc8(instr.addrMode)
         reg[instr.regType] = data
         reg[FT.N] = testBit(data.toInt(), 7)
         reg[FT.Z] = data.toInt() == 0
     }
 
     private fun opSTORE() {
-        bus.writeByte(readSrc(instr.addrMode).toUShort(), reg[instr.regType])
+        bus.writeByte(readSrc16(instr.addrMode), reg[instr.regType])
     }
 
     private fun opJMP() {
-        reg.PC =
-            when (instr.addrMode) {
-                AM.ABSOLUTE -> fetchWord()
-                AM.INDIRECT -> getInd()
-                else -> throw IllegalArgumentException("Unsupported Addressing Mode: ${instr.addrMode}")
-            }
+        reg.PC = readSrc16(instr.addrMode)
     }
 
     private fun opJSR() {
@@ -126,7 +125,7 @@ class CPU(
     }
 
     private fun opBRANCH() {
-        val offset = getRel()
+        val offset = readSrc16(instr.addrMode)
         val flag =
             when (instr.insType) {
                 IT.BRSET -> reg[instr.flagType]

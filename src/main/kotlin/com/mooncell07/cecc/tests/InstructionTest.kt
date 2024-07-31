@@ -13,7 +13,19 @@ data class State(
     @SerializedName("y") var Y: UByte,
     @SerializedName("p") var SR: UByte,
     @SerializedName("ram") var ram: MutableList<List<Int>>,
-)
+) {
+    override fun toString(): String =
+        """State(PC=${PC.toHexString(HexFormat.UpperCase)}, 
+            |SP=${SP.toHexString(HexFormat.UpperCase)}, 
+            |A=${A.toHexString(HexFormat.UpperCase)}, 
+            |X=${X.toHexString(HexFormat.UpperCase)}, 
+            |Y=${Y.toHexString(HexFormat.UpperCase)}, 
+            |SR=${SR.toHexString(HexFormat.UpperCase)}, 
+            |ram=${ ram.map {innerList ->
+            innerList.map { it.toHexString(HexFormat.UpperCase) }
+        }})
+        """.trimMargin().replace("\n", "")
+}
 
 data class Test(
     @SerializedName("name") val name: String,
@@ -67,7 +79,9 @@ class InstructionTest(
         test: Test,
     ) {
         parseState(test)
-        assert(test.final == after) { "\n[$$opcode FAILED @ <TEST: $index NAME: ${test.name}>]\nMINE: ${test.final}\nYOURS: $after" }
+        assert(
+            test.final == after,
+        ) { "\n[$$opcode FAILED @ <TEST: $index NAME: ${test.name.uppercase()}>]\nMINE: ${test.final}\nYOURS: $after" }
     }
 
     fun run() {
@@ -81,13 +95,16 @@ class InstructionTest(
 }
 
 fun main(args: Array<String>) {
-    if (args[0] == "all") {
-        for (testFile in File("json-tests").listFiles()!!) {
-            val iTest = InstructionTest(testFile)
-            iTest.run()
+    if (args[0] == "--batch") {
+        for (testFile in File(args[1]).listFiles()!!) {
+            if (!testFile.isDirectory) {
+                val iTest = InstructionTest(testFile)
+                iTest.run()
+            }
         }
     } else {
         val iTest = InstructionTest(File(args[0]))
         iTest.run()
     }
+    println("\nALL TESTS PASSED!")
 }
