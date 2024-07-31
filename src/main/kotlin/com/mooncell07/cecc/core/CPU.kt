@@ -67,15 +67,9 @@ class CPU(
 
     private fun getZP(): UByte = bus.readByte(fetch().toUShort())
 
-    private fun getZPX(): UByte {
-        val fullAddr = bus.readWord((fetch() + reg[RT.X]).toUShort())
-        return bus.readByte(fullAddr)
-    }
+    private fun getZPX(): UByte = bus.readByte(((fetch() + reg[RT.X]) % 0x100u).toUShort())
 
-    private fun getZPY(): UByte {
-        val fullAddr = bus.readWord((fetch() + reg[RT.Y]).toUShort())
-        return bus.readByte(fullAddr)
-    }
+    private fun getZPY(): UByte = bus.readByte(((fetch() + reg[RT.Y]) % 0x100u).toUShort())
 
     private fun readSrc(mode: AddressingMode): UByte {
         if (mode == AM.INDIRECT || mode == AM.RELATIVE) {

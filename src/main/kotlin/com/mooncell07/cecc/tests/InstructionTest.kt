@@ -23,7 +23,7 @@ data class Test(
 )
 
 class InstructionTest(
-    filepath: String,
+    file: File,
 ) : BaseEmulator() {
     private var tests: Array<Test>
     private val opcode: String
@@ -31,7 +31,6 @@ class InstructionTest(
 
     init {
         val gson = Gson()
-        val file = File(filepath)
         opcode = file.name.removeSuffix(".json").uppercase()
         tests = gson.fromJson(file.readText(), Array<Test>::class.java)
     }
@@ -43,8 +42,6 @@ class InstructionTest(
         cpu.reg[RT.Y] = test.initial.Y
         cpu.reg[RT.SP] = test.initial.SP
         cpu.reg[RT.SR] = test.initial.SR
-
-        // println("${cpu.reg[RT.SR]} ${test.initial.SR} ${test.final.SR}")
 
         for (ramState in test.initial.ram) {
             bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte())
@@ -84,6 +81,13 @@ class InstructionTest(
 }
 
 fun main(args: Array<String>) {
-    val iTest = InstructionTest(args[0])
-    iTest.run()
+    if (args[0] == "all") {
+        for (testFile in File("json-tests").listFiles()!!) {
+            val iTest = InstructionTest(testFile)
+            iTest.run()
+        }
+    } else {
+        val iTest = InstructionTest(File(args[0]))
+        iTest.run()
+    }
 }
