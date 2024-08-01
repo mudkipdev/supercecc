@@ -12,9 +12,16 @@ class Bus(
         area[address.toInt()] = data
     }
 
-    fun readWord(address: UShort): UShort {
+    fun readWord(
+        address: UShort,
+        wrapping: Boolean = false,
+    ): UShort {
         val lo = readByte(address)
-        val hi = readByte(((address + 1u) % 0x100u).toUShort())
+        var hiAddr = (address + 1u)
+        if (wrapping) {
+            hiAddr %= 0x100u
+        }
+        val hi = readByte(hiAddr.toUShort())
         return concat(hi, lo)
     }
 }

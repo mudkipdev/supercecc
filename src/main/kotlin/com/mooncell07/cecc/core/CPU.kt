@@ -59,18 +59,28 @@ class CPU(
 
     private fun getZPY(): UShort = ((fetch() + reg[RT.Y]) % 0x100u).toUShort()
 
-    private fun getInd(): UShort = bus.readWord(fetchWord())
+    private fun getInd(): UShort {
+        val base = fetchWord()
+        val lo = bus.readByte(base)
+        val hi =
+            if (LSB(base).toUInt() == 0xFFu) {
+                bus.readByte((base and 0xFF00u))
+            } else {
+                bus.readByte((base + 1u).toUShort())
+            }
+        return concat(hi, lo)
+    }
 
     private fun getRel(): UShort = fetch().toByte().toUShort()
 
     private fun getXInd(): UShort {
         val base = (fetch() + reg[RT.X]) % 0x100u
-        return bus.readWord(base.toUShort())
+        return bus.readWord(base.toUShort(), wrapping = true)
     }
 
     private fun getIndY(): UShort {
         val base = fetch()
-        return (bus.readWord(base.toUShort()) + reg[RT.Y].toUShort()).toUShort()
+        return (bus.readWord(base.toUShort(), wrapping = true) + reg[RT.Y].toUShort()).toUShort()
     }
 
     private fun readSrc8(mode: AddressingMode): UByte {
@@ -87,7 +97,7 @@ class CPU(
     private fun readSrc16(mode: AddressingMode): UShort = decoders[mode]!!.invoke()
 
     private fun push(data: UByte) {
-        stack[reg[RT.SP].toInt()] = data
+        bus.writeByte((reg[RT.SP] + 0x100u).toUShort(), data)
         reg[RT.SP]--
     }
 
@@ -113,9 +123,10 @@ class CPU(
     }
 
     private fun opJSR() {
-        push(LSB(reg.PC))
-        push(MSB(reg.PC))
-        opJMP()
+        val pc = (reg.PC + 1u).toUShort()
+        push(MSB(pc))
+        push(LSB(pc))
+        reg.PC = readSrc16(instr.addrMode)
     }
 
     private fun opNOP() {}
