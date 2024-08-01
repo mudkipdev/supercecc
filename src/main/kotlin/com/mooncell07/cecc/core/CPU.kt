@@ -17,6 +17,12 @@ class CPU(
             IT.BRCLR to { opBRANCH() },
             IT.BRSET to { opBRANCH() },
             IT.CLEAR to { opCLEAR() },
+            IT.TAX to { opTRANSFER() },
+            IT.TAY to { opTRANSFER() },
+            IT.TSX to { opTRANSFER() },
+            IT.TXA to { opTRANSFER() },
+            IT.TYA to { opTRANSFER() },
+            IT.TXS to { opTRANSFER() },
         )
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
@@ -151,6 +157,25 @@ class CPU(
 
     private fun opCLEAR() {
         reg[instr.flagType] = false
+    }
+
+    private fun opTRANSFER() {
+        val data =
+            when (instr.insType) {
+                IT.TXA -> reg[RT.X]
+                IT.TYA -> reg[RT.Y]
+                IT.TXS -> reg[RT.X]
+                IT.TAY -> reg[RT.A]
+                IT.TAX -> reg[RT.A]
+                IT.TSX -> reg[RT.SP]
+                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+            }
+        reg[instr.regType] = data
+
+        if (instr.insType != IT.TXS) {
+            reg[FT.N] = testBit(data.toInt(), 7)
+            reg[FT.Z] = data.toInt() == 0
+        }
     }
 
     fun tick() {
