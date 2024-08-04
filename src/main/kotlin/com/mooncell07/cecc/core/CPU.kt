@@ -5,6 +5,7 @@ class CPU(
 ) {
     val reg: Register = Register()
     var instr: INSTR = INSTAB[0xEA]
+    private var lastFetchedAddr: UShort = 0x0000u
 
     private val executors: Map<IT, () -> Unit> =
         mapOf(
@@ -23,6 +24,10 @@ class CPU(
             IT.TXA to { opTRANSFER() },
             IT.TYA to { opTRANSFER() },
             IT.TXS to { opTRANSFER() },
+            IT.PUSH to { opPUSH() },
+            IT.PULL to { opPULL() },
+            IT.INCREMENT to { opINCREMENT() },
+            IT.DECREMENT to { opDECREMENT() },
         )
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
@@ -48,6 +53,9 @@ class CPU(
 
         return concat(hi, lo)
     }
+
+    // Only works for instrs that use pre defined regs
+    private fun getImpl(): UByte = reg[instr.regType]
 
     private fun getImm(): UByte = fetch()
 
@@ -96,7 +104,11 @@ class CPU(
         return when (mode) {
             AM.IMMEDIATE -> getImm()
             AM.ACCUMULATOR -> getAcc()
-            else -> bus.readByte(decoders[mode]!!.invoke())
+            AM.IMPLIED -> getImpl()
+            else -> {
+                lastFetchedAddr = decoders[mode]!!.invoke()
+                bus.readByte(lastFetchedAddr)
+            }
         }
     }
 
@@ -108,8 +120,8 @@ class CPU(
     }
 
     private fun pop(): UByte {
-        val res = stack[reg[RT.SP].toInt()]
         reg[RT.SP]++
+        val res = bus.readByte((reg[RT.SP] + 0x100u).toUShort())
         return res
     }
 
@@ -176,6 +188,53 @@ class CPU(
             reg[FT.N] = testBit(data.toInt(), 7)
             reg[FT.Z] = data.toInt() == 0
         }
+    }
+
+    private fun opPUSH() {
+        var data = reg[instr.regType]
+        if (instr.regType == RT.SR) {
+            data = setBit(data.toInt(), FT.B.ordinal - 1).toUByte()
+        }
+        push(data)
+    }
+
+    private fun opPULL() {
+        val data = pop()
+        reg[instr.regType] = data
+
+        if (instr.regType == RT.SR) {
+            reg[FT.B] = false
+            reg[FT.UNUSED2_IGN] = true
+        } else {
+            reg[FT.N] = testBit(data.toInt(), 7)
+            reg[FT.Z] = data.toInt() == 0
+        }
+    }
+
+    private fun opINCREMENT() {
+        var data = readSrc8(instr.addrMode)
+        data++
+
+        when (instr.addrMode) {
+            AM.IMPLIED -> reg[instr.regType] = data
+            else -> bus.writeByte(lastFetchedAddr, data)
+        }
+
+        reg[FT.N] = testBit(data.toInt(), 7)
+        reg[FT.Z] = data.toInt() == 0
+    }
+
+    private fun opDECREMENT() {
+        var data = readSrc8(instr.addrMode)
+        data--
+
+        when (instr.addrMode) {
+            AM.IMPLIED -> reg[instr.regType] = data
+            else -> bus.writeByte(lastFetchedAddr, data)
+        }
+
+        reg[FT.N] = testBit(data.toInt(), 7)
+        reg[FT.Z] = data.toInt() == 0
     }
 
     fun tick() {
