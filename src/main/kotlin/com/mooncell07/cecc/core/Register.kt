@@ -32,4 +32,17 @@ class Register {
         val idx = RT.SR.ordinal
         regs[idx] = handleBit(regs[idx].toInt(), flagType.ordinal - 1, flagv).toUByte()
     }
+
+    fun checkOverflow(
+        opA: UByte,
+        opB: UByte,
+        res: UByte,
+    ) {
+        val opAMSb = testBit(opA.toInt(), 7)
+        if ((opAMSb == testBit(opB.toInt(), 7)) and (testBit(res.toInt(), 7) != opAMSb)) {
+            this[FT.V] = true
+        } else {
+            this[FT.V] = false
+        }
+    }
 }
