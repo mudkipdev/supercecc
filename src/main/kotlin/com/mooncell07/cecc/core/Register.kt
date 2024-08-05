@@ -37,12 +37,15 @@ class Register {
         opA: UByte,
         opB: UByte,
         res: UByte,
+        sbc: Boolean = false,
     ) {
         val opAMSb = testBit(opA.toInt(), 7)
-        if ((opAMSb == testBit(opB.toInt(), 7)) and (testBit(res.toInt(), 7) != opAMSb)) {
-            this[FT.V] = true
-        } else {
-            this[FT.V] = false
+        val opBMSb = testBit(opB.toInt(), 7)
+        val opRes = testBit(res.toInt(), 7)
+        if (sbc) {
+            this[FT.V] = (opAMSb != opBMSb) and (opRes == opBMSb)
+            return
         }
+        this[FT.V] = (opAMSb == opBMSb) and (opRes != opAMSb)
     }
 }

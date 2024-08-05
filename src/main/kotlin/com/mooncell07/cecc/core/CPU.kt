@@ -29,6 +29,7 @@ class CPU(
             IT.INCREMENT to { opINCREMENT() },
             IT.DECREMENT to { opDECREMENT() },
             IT.ADC to { opADC() },
+            IT.SBC to { opSBC() },
         )
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
@@ -241,12 +242,25 @@ class CPU(
     private fun opADC() {
         val acc = reg[RT.A]
         val mem = readSrc8(instr.addrMode)
-        val data = mem + acc + reg[FT.C].compareTo(false).toUInt()
-        reg[FT.C] = data > 0xFFu
-        reg[FT.Z] = (data.toInt() % 0x100) == 0
-        reg[FT.N] = testBit(data.toInt(), 7)
+        val c = (if (reg[FT.C]) 1u else 0u)
+        val data = (mem + acc + c).toInt()
+        reg[FT.C] = data > 0xFF
+        reg[FT.Z] = (data % 0x100) == 0
+        reg[FT.N] = testBit(data, 7)
         reg[RT.A] = data.toUByte()
         reg.checkOverflow(acc, mem, data.toUByte())
+    }
+
+    private fun opSBC() {
+        val acc = reg[RT.A]
+        val mem = readSrc8(instr.addrMode)
+        val c = (if (reg[FT.C]) 0u else 1u)
+        val data = (acc - mem - c).toInt()
+        reg[FT.C] = data >= 0
+        reg[FT.Z] = (data % 0x100) == 0
+        reg[FT.N] = testBit(data, 7)
+        reg[RT.A] = data.toUByte()
+        reg.checkOverflow(acc, mem, data.toUByte(), sbc = true)
     }
 
     fun tick() {
