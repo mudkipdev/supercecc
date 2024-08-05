@@ -33,6 +33,7 @@ class CPU(
             IT.AND to { opAND() },
             IT.EOR to { opEOR() },
             IT.ORA to { opORA() },
+            IT.ASL to { opASL() },
         )
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
@@ -285,6 +286,21 @@ class CPU(
         reg[RT.A] = data
         reg[FT.N] = testBit(data.toInt(), 7)
         reg[FT.Z] = data.toInt() == 0
+    }
+
+    private fun opASL() {
+        var data = readSrc8(instr.addrMode).toUInt()
+        reg[FT.C] = testBit(data.toInt(), 7)
+        data = data shl 1
+
+        when (instr.addrMode) {
+            AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
+            else -> {
+                bus.writeByte(lastFetchedAddr, data.toUByte())
+            }
+        }
+        reg[FT.N] = testBit(data.toInt(), 7)
+        reg[FT.Z] = (data % 0x100u).toInt() == 0
     }
 
     fun tick() {
