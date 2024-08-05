@@ -9,7 +9,7 @@ enum class FlagType { NONE, C, Z, I, D, B, UNUSED2_IGN, V, N }
 // Opcode Labels for generalised destination types differ from the standard labels.
 // Register Transfer opcodes are exempted.
 enum class InstructionType {
-    NONE, BRK, OR, ASL,
+    NONE, BRK, ORA, ASL,
     PUSH, CLEAR, JSR, EOR,
     AND, BIT, ROL, PULL,
     BRSET, BRCLR, SET, RTI,
