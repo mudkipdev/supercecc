@@ -35,6 +35,8 @@ class CPU(
             IT.ORA to { opORA() },
             IT.ASL to { opASL() },
             IT.LSR to { opLSR() },
+            IT.ROL to { opROL() },
+            IT.ROR to { opROR() },
         )
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
@@ -316,6 +318,38 @@ class CPU(
             }
         }
         reg[FT.N] = false
+        reg[FT.Z] = (data % 0x100u).toInt() == 0
+    }
+
+    private fun opROL() {
+        val op = readSrc8(instr.addrMode).toUInt()
+        val c = (if (reg[FT.C]) 1 else 0)
+        reg[FT.C] = testBit(op.toInt(), 7)
+        val data = (op shl 1) or c.toUInt()
+
+        when (instr.addrMode) {
+            AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
+            else -> {
+                bus.writeByte(lastFetchedAddr, data.toUByte())
+            }
+        }
+        reg[FT.N] = testBit(data.toInt(), 7)
+        reg[FT.Z] = (data % 0x100u).toInt() == 0
+    }
+
+    private fun opROR() {
+        val op = readSrc8(instr.addrMode).toUInt()
+        val c = (if (reg[FT.C]) 1 else 0)
+        reg[FT.C] = testBit(op.toInt(), 0)
+        val data = (op shr 1) or (c.toUInt() shl 7)
+
+        when (instr.addrMode) {
+            AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
+            else -> {
+                bus.writeByte(lastFetchedAddr, data.toUByte())
+            }
+        }
+        reg[FT.N] = testBit(data.toInt(), 7)
         reg[FT.Z] = (data % 0x100u).toInt() == 0
     }
 
