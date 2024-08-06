@@ -39,7 +39,11 @@ class CPU(
             IT.ROR to { opROR() },
             IT.COMPARE to { opCOMPARE() },
             IT.BIT to { opBIT() },
+            IT.BRK to { opBRK() },
+            IT.RTI to { opRTI() },
+            IT.RTS to { opRTS() },
         )
+
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
             AM.ABSOLUTE to { getAbs() },
@@ -370,6 +374,30 @@ class CPU(
         reg[FT.Z] = (acc and m).toInt() == 0
         reg[FT.N] = testBit(m.toInt(), 7)
         reg[FT.V] = testBit(m.toInt(), 6)
+    }
+
+    private fun opBRK() {
+        val pc = (reg.PC + 1u).toUShort()
+        push(MSB(pc))
+        push(LSB(pc))
+        reg.PC = bus.readWord(0xFFFEu)
+        push(setBit(reg[RT.SR].toInt(), FT.B.ordinal - 1).toUByte())
+        reg[FT.I] = true
+    }
+
+    private fun opRTI() {
+        reg[RT.SR] = pop()
+        reg[FT.B] = false
+        reg[FT.UNUSED2_IGN] = true
+        val lo = pop()
+        val hi = pop()
+        reg.PC = concat(hi, lo)
+    }
+
+    private fun opRTS() {
+        val lo = pop()
+        val hi = pop()
+        reg.PC = (concat(hi, lo) + 1u).toUShort()
     }
 
     fun tick() {
