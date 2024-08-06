@@ -5,60 +5,11 @@ class CPU(
 ) {
     val reg: Register = Register()
     var instr: INSTR = INSTAB[0xEA]
-    private var lastFetchedAddr: UShort = 0x0000u
-
-    private val executors: Map<IT, () -> Unit> =
-        mapOf(
-            IT.LOAD to { opLOAD() },
-            IT.STORE to { opSTORE() },
-            IT.JMP to { opJMP() },
-            IT.JSR to { opJSR() },
-            IT.NOP to { opNOP() },
-            IT.SET to { opSET() },
-            IT.BRCLR to { opBRANCH() },
-            IT.BRSET to { opBRANCH() },
-            IT.CLEAR to { opCLEAR() },
-            IT.TAX to { opTRANSFER() },
-            IT.TAY to { opTRANSFER() },
-            IT.TSX to { opTRANSFER() },
-            IT.TXA to { opTRANSFER() },
-            IT.TYA to { opTRANSFER() },
-            IT.TXS to { opTRANSFER() },
-            IT.PUSH to { opPUSH() },
-            IT.PULL to { opPULL() },
-            IT.INCREMENT to { opINCREMENT() },
-            IT.DECREMENT to { opDECREMENT() },
-            IT.ADC to { opADC() },
-            IT.SBC to { opSBC() },
-            IT.AND to { opAND() },
-            IT.EOR to { opEOR() },
-            IT.ORA to { opORA() },
-            IT.ASL to { opASL() },
-            IT.LSR to { opLSR() },
-            IT.ROL to { opROL() },
-            IT.ROR to { opROR() },
-            IT.COMPARE to { opCOMPARE() },
-            IT.BIT to { opBIT() },
-            IT.BRK to { opBRK() },
-            IT.RTI to { opRTI() },
-            IT.RTS to { opRTS() },
-        )
-
-    private val decoders: Map<AM, () -> UShort> =
-        mapOf(
-            AM.ABSOLUTE to { getAbs() },
-            AM.ABSOLUTE_X to { getAbsX() },
-            AM.ABSOLUTE_Y to { getAbsY() },
-            AM.X_INDIRECT to { getXInd() },
-            AM.INDIRECT_Y to { getIndY() },
-            AM.ZEROPAGE to { getZP() },
-            AM.ZEROPAGE_X to { getZPX() },
-            AM.ZEROPAGE_Y to { getZPY() },
-            AM.RELATIVE to { getRel() },
-            AM.INDIRECT to { getInd() },
-        )
-
+    private var lastAddr: UShort = 0x0000u
     private val stack: UByteArray = UByteArray(0xFF) { 0u }
+
+    // Fetchers
+    // ------------------------------------------------------------------------------------
 
     private fun fetch(): UByte = bus.readByte(reg.PC++)
 
@@ -68,6 +19,11 @@ class CPU(
 
         return concat(hi, lo)
     }
+
+    // ------------------------------------------------------------------------------------
+
+    // Handlers for different addressing modes
+    // ------------------------------------------------------------------------------------
 
     // Only works for instrs that use pre defined regs
     private fun getImpl(): UByte = reg[instr.regType]
@@ -88,6 +44,8 @@ class CPU(
 
     private fun getZPY(): UShort = ((fetch() + reg[RT.Y]) % 0x100u).toUShort()
 
+    private fun getRel(): UShort = fetch().toByte().toUShort()
+
     private fun getInd(): UShort {
         val base = fetchWord()
         val lo = bus.readByte(base)
@@ -99,8 +57,6 @@ class CPU(
             }
         return concat(hi, lo)
     }
-
-    private fun getRel(): UShort = fetch().toByte().toUShort()
 
     private fun getXInd(): UShort {
         val base = (fetch() + reg[RT.X]) % 0x100u
@@ -121,13 +77,18 @@ class CPU(
             AM.ACCUMULATOR -> getAcc()
             AM.IMPLIED -> getImpl()
             else -> {
-                lastFetchedAddr = decoders[mode]!!.invoke()
-                bus.readByte(lastFetchedAddr)
+                lastAddr = decoders[mode]!!.invoke()
+                bus.readByte(lastAddr)
             }
         }
     }
 
     private fun readSrc16(mode: AddressingMode): UShort = decoders[mode]!!.invoke()
+
+    // ------------------------------------------------------------------------------------
+
+    // Stack Utils
+    // ------------------------------------------------------------------------------------
 
     private fun push(data: UByte) {
         bus.writeByte((reg[RT.SP] + 0x100u).toUShort(), data)
@@ -140,6 +101,11 @@ class CPU(
         return res
     }
 
+    // ------------------------------------------------------------------------------------
+
+    // Instruction Handlers
+    // ------------------------------------------------------------------------------------
+
     private fun opLOAD() {
         val data = readSrc8(instr.addrMode)
         reg[instr.regType] = data
@@ -149,41 +115,6 @@ class CPU(
 
     private fun opSTORE() {
         bus.writeByte(readSrc16(instr.addrMode), reg[instr.regType])
-    }
-
-    private fun opJMP() {
-        reg.PC = readSrc16(instr.addrMode)
-    }
-
-    private fun opJSR() {
-        val pc = (reg.PC + 1u).toUShort()
-        push(MSB(pc))
-        push(LSB(pc))
-        reg.PC = readSrc16(instr.addrMode)
-    }
-
-    private fun opNOP() {}
-
-    private fun opSET() {
-        reg[instr.flagType] = true
-    }
-
-    private fun opBRANCH() {
-        val offset = readSrc16(instr.addrMode)
-        val flag =
-            when (instr.insType) {
-                IT.BRSET -> reg[instr.flagType]
-                IT.BRCLR -> !reg[instr.flagType]
-                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
-            }
-
-        if (flag) {
-            reg.PC = (reg.PC + offset).toUShort()
-        }
-    }
-
-    private fun opCLEAR() {
-        reg[instr.flagType] = false
     }
 
     private fun opTRANSFER() {
@@ -203,6 +134,37 @@ class CPU(
             reg[FT.N] = testBit(data.toInt(), 7)
             reg[FT.Z] = data.toInt() == 0
         }
+    }
+
+    private fun opSET() {
+        reg[instr.flagType] = true
+    }
+
+    private fun opCLEAR() {
+        reg[instr.flagType] = false
+    }
+
+    private fun opBRANCH() {
+        val offset = readSrc16(instr.addrMode)
+        val flag =
+            when (instr.insType) {
+                IT.BRSET -> reg[instr.flagType]
+                IT.BRCLR -> !reg[instr.flagType]
+                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+            }
+
+        if (flag) {
+            reg.PC = (reg.PC + offset).toUShort()
+        }
+    }
+
+    private fun opCOMPARE() {
+        val r = reg[instr.regType]
+        val m = readSrc8(instr.addrMode)
+        val data = r - m
+        reg[FT.C] = r >= m
+        reg[FT.Z] = r == m
+        reg[FT.N] = testBit(data.toInt(), 7)
     }
 
     private fun opPUSH() {
@@ -232,7 +194,7 @@ class CPU(
 
         when (instr.addrMode) {
             AM.IMPLIED -> reg[instr.regType] = data
-            else -> bus.writeByte(lastFetchedAddr, data)
+            else -> bus.writeByte(lastAddr, data)
         }
 
         reg[FT.N] = testBit(data.toInt(), 7)
@@ -245,12 +207,25 @@ class CPU(
 
         when (instr.addrMode) {
             AM.IMPLIED -> reg[instr.regType] = data
-            else -> bus.writeByte(lastFetchedAddr, data)
+            else -> bus.writeByte(lastAddr, data)
         }
 
         reg[FT.N] = testBit(data.toInt(), 7)
         reg[FT.Z] = data.toInt() == 0
     }
+
+    private fun opJMP() {
+        reg.PC = readSrc16(instr.addrMode)
+    }
+
+    private fun opJSR() {
+        val pc = (reg.PC + 1u).toUShort()
+        push(MSB(pc))
+        push(LSB(pc))
+        reg.PC = readSrc16(instr.addrMode)
+    }
+
+    private fun opNOP() {}
 
     private fun opADC() {
         val acc = reg[RT.A]
@@ -305,7 +280,7 @@ class CPU(
         when (instr.addrMode) {
             AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
             else -> {
-                bus.writeByte(lastFetchedAddr, data.toUByte())
+                bus.writeByte(lastAddr, data.toUByte())
             }
         }
         reg[FT.N] = testBit(data.toInt(), 7)
@@ -320,7 +295,7 @@ class CPU(
         when (instr.addrMode) {
             AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
             else -> {
-                bus.writeByte(lastFetchedAddr, data.toUByte())
+                bus.writeByte(lastAddr, data.toUByte())
             }
         }
         reg[FT.N] = false
@@ -336,7 +311,7 @@ class CPU(
         when (instr.addrMode) {
             AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
             else -> {
-                bus.writeByte(lastFetchedAddr, data.toUByte())
+                bus.writeByte(lastAddr, data.toUByte())
             }
         }
         reg[FT.N] = testBit(data.toInt(), 7)
@@ -352,20 +327,11 @@ class CPU(
         when (instr.addrMode) {
             AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
             else -> {
-                bus.writeByte(lastFetchedAddr, data.toUByte())
+                bus.writeByte(lastAddr, data.toUByte())
             }
         }
         reg[FT.N] = testBit(data.toInt(), 7)
         reg[FT.Z] = (data % 0x100u).toInt() == 0
-    }
-
-    private fun opCOMPARE() {
-        val r = reg[instr.regType]
-        val m = readSrc8(instr.addrMode)
-        val data = r - m
-        reg[FT.C] = r >= m
-        reg[FT.Z] = r == m
-        reg[FT.N] = testBit(data.toInt(), 7)
     }
 
     private fun opBIT() {
@@ -400,9 +366,62 @@ class CPU(
         reg.PC = (concat(hi, lo) + 1u).toUShort()
     }
 
+    // ------------------------------------------------------------------------------------
+
     fun tick() {
         instr = INSTAB[fetch().toInt()]
         assert(instr.insType != IT.NONE) { "${instr.insType} is an illegal instruction type." }
         executors[instr.insType]?.invoke()
     }
+
+    private val executors: Map<IT, () -> Unit> =
+        mapOf(
+            IT.LOAD to { opLOAD() },
+            IT.STORE to { opSTORE() },
+            IT.JMP to { opJMP() },
+            IT.JSR to { opJSR() },
+            IT.NOP to { opNOP() },
+            IT.SET to { opSET() },
+            IT.BRCLR to { opBRANCH() },
+            IT.BRSET to { opBRANCH() },
+            IT.CLEAR to { opCLEAR() },
+            IT.TAX to { opTRANSFER() },
+            IT.TAY to { opTRANSFER() },
+            IT.TSX to { opTRANSFER() },
+            IT.TXA to { opTRANSFER() },
+            IT.TYA to { opTRANSFER() },
+            IT.TXS to { opTRANSFER() },
+            IT.PUSH to { opPUSH() },
+            IT.PULL to { opPULL() },
+            IT.INCREMENT to { opINCREMENT() },
+            IT.DECREMENT to { opDECREMENT() },
+            IT.ADC to { opADC() },
+            IT.SBC to { opSBC() },
+            IT.AND to { opAND() },
+            IT.EOR to { opEOR() },
+            IT.ORA to { opORA() },
+            IT.ASL to { opASL() },
+            IT.LSR to { opLSR() },
+            IT.ROL to { opROL() },
+            IT.ROR to { opROR() },
+            IT.COMPARE to { opCOMPARE() },
+            IT.BIT to { opBIT() },
+            IT.BRK to { opBRK() },
+            IT.RTI to { opRTI() },
+            IT.RTS to { opRTS() },
+        )
+
+    private val decoders: Map<AM, () -> UShort> =
+        mapOf(
+            AM.ABSOLUTE to { getAbs() },
+            AM.ABSOLUTE_X to { getAbsX() },
+            AM.ABSOLUTE_Y to { getAbsY() },
+            AM.X_INDIRECT to { getXInd() },
+            AM.INDIRECT_Y to { getIndY() },
+            AM.ZEROPAGE to { getZP() },
+            AM.ZEROPAGE_X to { getZPX() },
+            AM.ZEROPAGE_Y to { getZPY() },
+            AM.RELATIVE to { getRel() },
+            AM.INDIRECT to { getInd() },
+        )
 }
