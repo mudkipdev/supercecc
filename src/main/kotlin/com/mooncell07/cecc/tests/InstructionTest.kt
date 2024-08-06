@@ -96,13 +96,21 @@ class InstructionTest(
 
 fun main(args: Array<String>) {
     if (args[0] == "--batch") {
-        for (testFile in File(args[1]).listFiles()!!) {
-            if (!testFile.isDirectory) {
-                val iTest = InstructionTest(testFile)
+        for (t in File(args[1]).listFiles()!!) {
+            if (!t.isDirectory) {
+                // When a directory of tests is passed, such as `adc-tests`, `and-tests` etc
+                val iTest = InstructionTest(t)
                 iTest.run()
+            } else {
+                // When a directory of subdirectories containing tests is passed, such as `json-tests`
+                for (testFile in t.listFiles()!!) {
+                    val iTest = InstructionTest(testFile)
+                    iTest.run()
+                }
             }
         }
     } else {
+        // When the test file is directly passed
         val iTest = InstructionTest(File(args[0]))
         iTest.run()
     }
