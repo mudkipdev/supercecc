@@ -37,6 +37,7 @@ class CPU(
             IT.LSR to { opLSR() },
             IT.ROL to { opROL() },
             IT.ROR to { opROR() },
+            IT.COMPARE to { opCOMPARE() },
         )
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
@@ -351,6 +352,15 @@ class CPU(
         }
         reg[FT.N] = testBit(data.toInt(), 7)
         reg[FT.Z] = (data % 0x100u).toInt() == 0
+    }
+
+    private fun opCOMPARE() {
+        val r = reg[instr.regType]
+        val m = readSrc8(instr.addrMode)
+        val data = r - m
+        reg[FT.C] = r >= m
+        reg[FT.Z] = r == m
+        reg[FT.N] = testBit(data.toInt(), 7)
     }
 
     fun tick() {
