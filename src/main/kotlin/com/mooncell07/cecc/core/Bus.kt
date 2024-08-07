@@ -3,13 +3,20 @@ package com.mooncell07.cecc.core
 class Bus(
     private val area: UByteArray = UByteArray(0x10000) { 0u },
 ) {
-    fun readByte(address: UShort): UByte = area[address.toInt()]
+    var cycles: MutableList<MutableList<Any>> = mutableListOf(mutableListOf(Any()))
+
+    fun readByte(address: UShort): UByte {
+        val res = area[address.toInt()]
+        cycles.add(mutableListOf(address.toDouble(), res.toDouble(), "read"))
+        return res
+    }
 
     fun writeByte(
         address: UShort,
         data: UByte,
     ) {
         area[address.toInt()] = data
+        cycles.add(mutableListOf(address.toDouble(), data.toDouble(), "write"))
     }
 
     fun readWord(

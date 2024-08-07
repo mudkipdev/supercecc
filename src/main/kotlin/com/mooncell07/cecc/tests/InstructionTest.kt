@@ -82,6 +82,8 @@ class InstructionTest(
         assert(
             test.final == after,
         ) { "\n[$$opcode FAILED @ <TEST: $index NAME: ${test.name.uppercase()}>]\nMINE: ${test.final}\nYOURS: $after" }
+        cpu.bus.cycles.removeFirst()
+        assert(cpu.bus.cycles == test.cycles) { "\n${cpu.bus.cycles}\n${test.cycles}" }
     }
 
     fun run() {
@@ -89,6 +91,7 @@ class InstructionTest(
             setEmuState(test)
             cpu.tick()
             compare(i, test)
+            cpu.bus.cycles.clear()
         }
         println("[$$opcode]: PASSED!")
     }

@@ -1,7 +1,7 @@
 package com.mooncell07.cecc.core
 
 class CPU(
-    private val bus: Bus,
+    val bus: Bus,
 ) {
     val reg: Register = Register()
     var instr: INSTR = INSTAB[0xEA]
