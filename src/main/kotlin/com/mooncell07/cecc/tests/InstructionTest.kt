@@ -56,7 +56,7 @@ class InstructionTest(
         cpu.reg[RT.SR] = test.initial.SR
 
         for (ramState in test.initial.ram) {
-            bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte())
+            bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte(), ext = true)
         }
     }
 
@@ -70,7 +70,7 @@ class InstructionTest(
 
         after.ram = MutableList(test.final.ram.size) { listOf(2) }
         for ((i, ramState) in test.final.ram.withIndex()) {
-            after.ram[i] = listOf(ramState[0], bus.readByte(ramState[0].toUShort()).toInt())
+            after.ram[i] = listOf(ramState[0], bus.readByte(ramState[0].toUShort(), ext = true).toInt())
         }
     }
 
@@ -79,11 +79,12 @@ class InstructionTest(
         test: Test,
     ) {
         parseState(test)
-        assert(
-            test.final == after,
-        ) { "\n[$$opcode FAILED @ <TEST: $index NAME: ${test.name.uppercase()}>]\nMINE: ${test.final}\nYOURS: $after" }
         cpu.bus.cycles.removeFirst()
-        assert(cpu.bus.cycles == test.cycles) { "\n${cpu.bus.cycles}\n${test.cycles}" }
+        assert(
+            (test.final == after) and (cpu.bus.cycles == test.cycles),
+        ) {
+            "\n[$$opcode FAILED @ <TEST: $index NAME: ${test.name.uppercase()}>]\nMINE: ${test.final}\n${test.cycles}\nYOURS: $after\n${cpu.bus.cycles}"
+        }
     }
 
     fun run() {
@@ -91,7 +92,6 @@ class InstructionTest(
             setEmuState(test)
             cpu.tick()
             compare(i, test)
-            cpu.bus.cycles.clear()
         }
         println("[$$opcode]: PASSED!")
     }

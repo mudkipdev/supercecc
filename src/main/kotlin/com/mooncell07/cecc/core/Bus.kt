@@ -5,18 +5,26 @@ class Bus(
 ) {
     var cycles: MutableList<MutableList<Any>> = mutableListOf(mutableListOf(Any()))
 
-    fun readByte(address: UShort): UByte {
+    fun readByte(
+        address: UShort,
+        ext: Boolean = false,
+    ): UByte {
         val res = area[address.toInt()]
-        cycles.add(mutableListOf(address.toDouble(), res.toDouble(), "read"))
+        if (!ext) {
+            cycles.add(mutableListOf(address.toDouble(), res.toDouble(), "read"))
+        }
         return res
     }
 
     fun writeByte(
         address: UShort,
         data: UByte,
+        ext: Boolean = false,
     ) {
         area[address.toInt()] = data
-        cycles.add(mutableListOf(address.toDouble(), data.toDouble(), "write"))
+        if (!ext) {
+            cycles.add(mutableListOf(address.toDouble(), data.toDouble(), "write"))
+        }
     }
 
     fun readWord(
