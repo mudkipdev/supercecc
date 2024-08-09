@@ -58,6 +58,7 @@ class InstructionTest(
         for (ramState in test.initial.ram) {
             bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte(), ext = true)
         }
+        bus.cycles.clear()
     }
 
     private fun parseState(test: Test) {
@@ -79,7 +80,6 @@ class InstructionTest(
         test: Test,
     ) {
         parseState(test)
-        cpu.bus.cycles.removeFirst()
         assert(
             (test.final == after) and (cpu.bus.cycles == test.cycles),
         ) {

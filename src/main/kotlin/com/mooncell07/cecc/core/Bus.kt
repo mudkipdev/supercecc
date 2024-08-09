@@ -39,4 +39,6 @@ class Bus(
         val hi = readByte(hiAddr.toUShort())
         return concat(hi, lo)
     }
+
+    fun dummyRead(address: UShort) = readByte(address)
 }

@@ -21,7 +21,7 @@ class Register {
 
     operator fun get(flagType: FT): Boolean {
         assert(flagType != FT.NONE) { "$flagType type flag is not supported for FLAGGET." }
-        return testBit(regs[RT.SR.ordinal].toInt(), flagType.ordinal - 1)
+        return testBit(regs[RT.SR.ordinal].toInt(), getFlagOrdinal(flagType))
     }
 
     operator fun set(
@@ -30,8 +30,15 @@ class Register {
     ) {
         assert(flagType != FT.NONE) { "$flagType type flag is not supported for FLAGSET." }
         val idx = RT.SR.ordinal
-        regs[idx] = handleBit(regs[idx].toInt(), flagType.ordinal - 1, flagv).toUByte()
+        regs[idx] = handleBit(regs[idx].toInt(), getFlagOrdinal(flagType), flagv).toUByte()
     }
+
+    @JvmName("kotlin-setPC")
+    fun setPC(v: UShort) {
+        PC = v
+    }
+
+    fun getFlagOrdinal(f: FT) = f.ordinal - 1
 
     fun checkOverflow(
         opA: UByte,

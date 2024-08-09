@@ -59,7 +59,9 @@ class CPU(
     }
 
     private fun getXInd(): UShort {
-        val base = (fetch() + reg[RT.X]) % 0x100u
+        val addr = fetch()
+        bus.dummyRead(addr.toUShort())
+        val base = (addr + reg[RT.X]) % 0x100u
         return bus.readWord(base.toUShort(), wrapping = true)
     }
 
@@ -87,7 +89,7 @@ class CPU(
 
     // ------------------------------------------------------------------------------------
 
-    // Stack Utils
+    // Utils
     // ------------------------------------------------------------------------------------
 
     private fun push(data: UByte) {
@@ -97,8 +99,17 @@ class CPU(
 
     private fun pop(): UByte {
         reg[RT.SP]++
-        val res = bus.readByte((reg[RT.SP] + 0x100u).toUShort())
-        return res
+        val v = bus.readByte((reg[RT.SP] + 0x100u).toUShort())
+        return v
+    }
+
+    private fun indcr(v: UByte) {
+        when (instr.addrMode) {
+            AM.IMPLIED -> reg[instr.regType] = v
+            else -> bus.writeByte(lastAddr, v)
+        }
+        reg[FT.N] = testBit(v.toInt(), 7)
+        reg[FT.Z] = v.toInt() == 0
     }
 
     // ------------------------------------------------------------------------------------
@@ -107,10 +118,10 @@ class CPU(
     // ------------------------------------------------------------------------------------
 
     private fun opLOAD() {
-        val data = readSrc8(instr.addrMode)
-        reg[instr.regType] = data
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = data.toInt() == 0
+        val m = readSrc8(instr.addrMode)
+        reg[instr.regType] = m
+        reg[FT.N] = testBit(m.toInt(), 7)
+        reg[FT.Z] = m.toInt() == 0
     }
 
     private fun opSTORE() {
@@ -118,7 +129,7 @@ class CPU(
     }
 
     private fun opTRANSFER() {
-        val data =
+        val r =
             when (instr.insType) {
                 IT.TXA -> reg[RT.X]
                 IT.TYA -> reg[RT.Y]
@@ -128,11 +139,11 @@ class CPU(
                 IT.TSX -> reg[RT.SP]
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
-        reg[instr.regType] = data
+        reg[instr.regType] = r
 
         if (instr.insType != IT.TXS) {
-            reg[FT.N] = testBit(data.toInt(), 7)
-            reg[FT.Z] = data.toInt() == 0
+            reg[FT.N] = testBit(r.toInt(), 7)
+            reg[FT.Z] = r.toInt() == 0
         }
     }
 
@@ -146,207 +157,152 @@ class CPU(
 
     private fun opBRANCH() {
         val offset = readSrc16(instr.addrMode)
-        val flag =
+        val f =
             when (instr.insType) {
                 IT.BRSET -> reg[instr.flagType]
                 IT.BRCLR -> !reg[instr.flagType]
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
 
-        if (flag) {
-            reg.PC = (reg.PC + offset).toUShort()
-        }
+        if (f) reg.setPC((reg.PC + offset).toUShort())
     }
 
     private fun opCOMPARE() {
         val r = reg[instr.regType]
         val m = readSrc8(instr.addrMode)
-        val data = r - m
+        val v = r - m
         reg[FT.C] = r >= m
         reg[FT.Z] = r == m
-        reg[FT.N] = testBit(data.toInt(), 7)
+        reg[FT.N] = testBit(v.toInt(), 7)
+    }
+
+    private fun opLOGICAL() {
+        val v =
+            when (instr.insType) {
+                IT.AND -> reg[RT.A] and readSrc8(instr.addrMode)
+                IT.ORA -> reg[RT.A] or readSrc8(instr.addrMode)
+                IT.EOR -> reg[RT.A] xor readSrc8(instr.addrMode)
+                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+            }
+        reg[RT.A] = v
+        reg[FT.N] = testBit(v.toInt(), 7)
+        reg[FT.Z] = v.toInt() == 0
+    }
+
+    private fun opSHIFT() {
+        val m = readSrc8(instr.addrMode).toUInt()
+        val v: UInt
+
+        when (instr.insType) {
+            IT.ASL -> {
+                v = m shl 1
+                reg[FT.C] = testBit(m.toInt(), 7)
+            }
+            IT.LSR -> {
+                v = m shr 1
+                reg[FT.C] = testBit(m.toInt(), 0)
+            }
+            IT.ROL -> {
+                val c = (if (reg[FT.C]) 1 else 0)
+                v = (m shl 1) or c.toUInt()
+                reg[FT.C] = testBit(m.toInt(), 7)
+            }
+            IT.ROR -> {
+                val c = (if (reg[FT.C]) 1 else 0)
+                v = (m shr 1) or (c.toUInt() shl 7)
+                reg[FT.C] = testBit(m.toInt(), 0)
+            }
+            else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+        }
+
+        when (instr.addrMode) {
+            AM.ACCUMULATOR -> reg[RT.A] = v.toUByte()
+            else -> {
+                bus.writeByte(lastAddr, v.toUByte())
+            }
+        }
+
+        reg[FT.N] = testBit(v.toInt(), 7)
+        reg[FT.Z] = (v % 0x100u).toInt() == 0
     }
 
     private fun opPUSH() {
-        var data = reg[instr.regType]
+        var r = reg[instr.regType]
         if (instr.regType == RT.SR) {
-            data = setBit(data.toInt(), FT.B.ordinal - 1).toUByte()
+            r = setBit(r.toInt(), reg.getFlagOrdinal(FT.B)).toUByte()
         }
-        push(data)
+        push(r)
     }
 
     private fun opPULL() {
-        val data = pop()
-        reg[instr.regType] = data
+        val r = pop()
+        reg[instr.regType] = r
 
-        if (instr.regType == RT.SR) {
-            reg[FT.B] = false
-            reg[FT.UNUSED2_IGN] = true
-        } else {
-            reg[FT.N] = testBit(data.toInt(), 7)
-            reg[FT.Z] = data.toInt() == 0
+        when (instr.regType) {
+            RT.SR -> {
+                reg[FT.B] = false
+                reg[FT.UNUSED2_IGN] = true
+            }
+
+            else -> {
+                reg[FT.N] = testBit(r.toInt(), 7)
+                reg[FT.Z] = r.toInt() == 0
+            }
         }
     }
 
-    private fun opINCREMENT() {
-        var data = readSrc8(instr.addrMode)
-        data++
+    private fun opINCREMENT() = indcr((readSrc8(instr.addrMode) + 1u).toUByte())
 
-        when (instr.addrMode) {
-            AM.IMPLIED -> reg[instr.regType] = data
-            else -> bus.writeByte(lastAddr, data)
-        }
+    private fun opDECREMENT() = indcr((readSrc8(instr.addrMode) - 1u).toUByte())
 
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = data.toInt() == 0
-    }
+    private fun opNOP() = bus.dummyRead(reg.PC)
 
-    private fun opDECREMENT() {
-        var data = readSrc8(instr.addrMode)
-        data--
-
-        when (instr.addrMode) {
-            AM.IMPLIED -> reg[instr.regType] = data
-            else -> bus.writeByte(lastAddr, data)
-        }
-
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = data.toInt() == 0
-    }
-
-    private fun opJMP() {
-        reg.PC = readSrc16(instr.addrMode)
-    }
+    private fun opJMP() = reg.setPC(readSrc16(instr.addrMode))
 
     private fun opJSR() {
-        val pc = (reg.PC + 1u).toUShort()
-        push(MSB(pc))
-        push(LSB(pc))
-        reg.PC = readSrc16(instr.addrMode)
+        val v = (reg.PC + 1u).toUShort()
+        push(MSB(v))
+        push(LSB(v))
+        reg.setPC(readSrc16(instr.addrMode))
     }
 
-    private fun opNOP() {}
-
     private fun opADC() {
-        val acc = reg[RT.A]
-        val mem = readSrc8(instr.addrMode)
+        val a = reg[RT.A]
+        val m = readSrc8(instr.addrMode)
         val c = (if (reg[FT.C]) 1u else 0u)
-        val data = (mem + acc + c).toInt()
-        reg[FT.C] = data > 0xFF
-        reg[FT.Z] = (data % 0x100) == 0
-        reg[FT.N] = testBit(data, 7)
-        reg[RT.A] = data.toUByte()
-        reg.checkOverflow(acc, mem, data.toUByte())
+        val v = (m + a + c).toInt()
+        reg[RT.A] = v.toUByte()
+        reg[FT.C] = v > 0xFF
+        reg[FT.Z] = (v % 0x100) == 0
+        reg[FT.N] = testBit(v, 7)
+        reg.checkOverflow(a, m, v.toUByte())
     }
 
     private fun opSBC() {
-        val acc = reg[RT.A]
-        val mem = readSrc8(instr.addrMode)
+        val a = reg[RT.A]
+        val m = readSrc8(instr.addrMode)
         val c = (if (reg[FT.C]) 0u else 1u)
-        val data = (acc - mem - c).toInt()
-        reg[FT.C] = data >= 0
-        reg[FT.Z] = (data % 0x100) == 0
-        reg[FT.N] = testBit(data, 7)
-        reg[RT.A] = data.toUByte()
-        reg.checkOverflow(acc, mem, data.toUByte(), sbc = true)
-    }
-
-    private fun opAND() {
-        val data = reg[RT.A] and readSrc8(instr.addrMode)
-        reg[RT.A] = data
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = data.toInt() == 0
-    }
-
-    private fun opEOR() {
-        val data = reg[RT.A] xor readSrc8(instr.addrMode)
-        reg[RT.A] = data
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = data.toInt() == 0
-    }
-
-    private fun opORA() {
-        val data = reg[RT.A] or readSrc8(instr.addrMode)
-        reg[RT.A] = data
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = data.toInt() == 0
-    }
-
-    private fun opASL() {
-        val op = readSrc8(instr.addrMode).toUInt()
-        reg[FT.C] = testBit(op.toInt(), 7)
-        val data = op shl 1
-
-        when (instr.addrMode) {
-            AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
-            else -> {
-                bus.writeByte(lastAddr, data.toUByte())
-            }
-        }
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = (data % 0x100u).toInt() == 0
-    }
-
-    private fun opLSR() {
-        val op = readSrc8(instr.addrMode).toUInt()
-        reg[FT.C] = testBit(op.toInt(), 0)
-        val data = op shr 1
-
-        when (instr.addrMode) {
-            AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
-            else -> {
-                bus.writeByte(lastAddr, data.toUByte())
-            }
-        }
-        reg[FT.N] = false
-        reg[FT.Z] = (data % 0x100u).toInt() == 0
-    }
-
-    private fun opROL() {
-        val op = readSrc8(instr.addrMode).toUInt()
-        val c = (if (reg[FT.C]) 1 else 0)
-        reg[FT.C] = testBit(op.toInt(), 7)
-        val data = (op shl 1) or c.toUInt()
-
-        when (instr.addrMode) {
-            AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
-            else -> {
-                bus.writeByte(lastAddr, data.toUByte())
-            }
-        }
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = (data % 0x100u).toInt() == 0
-    }
-
-    private fun opROR() {
-        val op = readSrc8(instr.addrMode).toUInt()
-        val c = (if (reg[FT.C]) 1 else 0)
-        reg[FT.C] = testBit(op.toInt(), 0)
-        val data = (op shr 1) or (c.toUInt() shl 7)
-
-        when (instr.addrMode) {
-            AM.ACCUMULATOR -> reg[RT.A] = data.toUByte()
-            else -> {
-                bus.writeByte(lastAddr, data.toUByte())
-            }
-        }
-        reg[FT.N] = testBit(data.toInt(), 7)
-        reg[FT.Z] = (data % 0x100u).toInt() == 0
+        val v = (a - m - c).toInt()
+        reg[RT.A] = v.toUByte()
+        reg[FT.C] = v >= 0
+        reg[FT.Z] = (v % 0x100) == 0
+        reg[FT.N] = testBit(v, 7)
+        reg.checkOverflow(a, m, v.toUByte(), sbc = true)
     }
 
     private fun opBIT() {
-        val acc = reg[RT.A]
+        val a = reg[RT.A]
         val m = readSrc8(instr.addrMode)
-        reg[FT.Z] = (acc and m).toInt() == 0
+        reg[FT.Z] = (a and m).toInt() == 0
         reg[FT.N] = testBit(m.toInt(), 7)
         reg[FT.V] = testBit(m.toInt(), 6)
     }
 
     private fun opBRK() {
-        val pc = (reg.PC + 1u).toUShort()
-        push(MSB(pc))
-        push(LSB(pc))
-        reg.PC = bus.readWord(0xFFFEu)
+        val v = (reg.PC + 1u).toUShort()
+        push(MSB(v))
+        push(LSB(v))
+        reg.setPC(bus.readWord(0xFFFEu))
         push(setBit(reg[RT.SR].toInt(), FT.B.ordinal - 1).toUByte())
         reg[FT.I] = true
     }
@@ -357,13 +313,13 @@ class CPU(
         reg[FT.UNUSED2_IGN] = true
         val lo = pop()
         val hi = pop()
-        reg.PC = concat(hi, lo)
+        reg.setPC(concat(hi, lo))
     }
 
     private fun opRTS() {
         val lo = pop()
         val hi = pop()
-        reg.PC = (concat(hi, lo) + 1u).toUShort()
+        reg.setPC((concat(hi, lo) + 1u).toUShort())
     }
 
     // ------------------------------------------------------------------------------------
@@ -397,13 +353,13 @@ class CPU(
             IT.DECREMENT to { opDECREMENT() },
             IT.ADC to { opADC() },
             IT.SBC to { opSBC() },
-            IT.AND to { opAND() },
-            IT.EOR to { opEOR() },
-            IT.ORA to { opORA() },
-            IT.ASL to { opASL() },
-            IT.LSR to { opLSR() },
-            IT.ROL to { opROL() },
-            IT.ROR to { opROR() },
+            IT.AND to { opLOGICAL() },
+            IT.EOR to { opLOGICAL() },
+            IT.ORA to { opLOGICAL() },
+            IT.ASL to { opSHIFT() },
+            IT.LSR to { opSHIFT() },
+            IT.ROL to { opSHIFT() },
+            IT.ROR to { opSHIFT() },
             IT.COMPARE to { opCOMPARE() },
             IT.BIT to { opBIT() },
             IT.BRK to { opBRK() },
