@@ -25,12 +25,8 @@ class CPU(
         base: UShort,
         effective: UShort,
     ) {
-        if (MSB(base) != MSB(effective)) {
-            bus.dummyRead((effective - 0x100u).toUShort())
-            wasPageBoundaryCrossed = true
-        } else {
-            wasPageBoundaryCrossed = false
-        }
+        wasPageBoundaryCrossed = MSB(base) != MSB(effective)
+        if (wasPageBoundaryCrossed) bus.dummyRead((effective - 0x100u).toUShort())
     }
 
     // ------------------------------------------------------------------------------------
@@ -153,10 +149,21 @@ class CPU(
         return v
     }
 
-    private fun indcr(v: UByte) {
+    private fun indcr(incr: Boolean) {
+        val m = readSrc8(instr.addrMode)
+        val v = (if (incr) (m + 1u) else (m - 1u)).toUByte()
         when (instr.addrMode) {
-            AM.IMPLIED -> reg[instr.regType] = v
-            else -> bus.writeByte(lastAddr, v)
+            AM.IMPLIED -> {
+                reg[instr.regType] = v
+                bus.dummyRead(reg.PC)
+            }
+            else -> {
+                if ((instr.addrMode == AM.ABSOLUTE_X) and !wasPageBoundaryCrossed) {
+                    bus.dummyRead(lastAddr)
+                }
+                bus.dummyWrite(lastAddr, m)
+                bus.writeByte(lastAddr, v)
+            }
         }
         reg[FT.N] = testBit(v.toInt(), 7)
         reg[FT.Z] = v.toInt() == 0
@@ -312,9 +319,9 @@ class CPU(
         }
     }
 
-    private fun opINCREMENT() = indcr((readSrc8(instr.addrMode) + 1u).toUByte())
+    private fun opINCREMENT() = indcr(incr = true)
 
-    private fun opDECREMENT() = indcr((readSrc8(instr.addrMode) - 1u).toUByte())
+    private fun opDECREMENT() = indcr(incr = false)
 
     private fun opNOP() = bus.dummyRead(reg.PC)
 
