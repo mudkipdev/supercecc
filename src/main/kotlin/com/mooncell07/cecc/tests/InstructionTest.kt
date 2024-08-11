@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.mooncell07.cecc.core.*
 import java.io.File
+import kotlin.system.exitProcess
 
 data class State(
     @SerializedName("pc") var PC: UShort,
@@ -22,7 +23,7 @@ data class State(
             |Y=${Y.toHexString(HexFormat.UpperCase)}, 
             |SR=${SR.toHexString(HexFormat.UpperCase)}, 
             |ram=${ ram.map {innerList ->
-            innerList.map { it.toHexString(HexFormat.UpperCase) }
+            innerList.map { it.toUShort().toHexString(HexFormat.UpperCase) }
         }})
         """.trimMargin().replace("\n", "")
 }
@@ -75,16 +76,58 @@ class InstructionTest(
         }
     }
 
+    private fun prettyCycles(c: List<List<Any>>) =
+        "${c.map {
+            Triple(
+                (it[0] as Number).toInt().toUShort().toHexString(HexFormat.UpperCase),
+                (it[1] as Number).toInt().toUByte().toHexString(HexFormat.UpperCase),
+                it[2],
+            )
+        }}"
+
+    private fun compareStates(
+        index: Int,
+        test: Test,
+    ) {
+        val dataTest = test.final != after
+        val cycleTest = (cpu.bus.cycles != test.cycles)
+        if (dataTest or cycleTest) {
+            println(
+                """[
+                    |$$opcode FAILED @ 
+                    |<TEST: $index 
+                    |NAME: ${test.name.uppercase()} 
+                    |MISMATCH TYPE: ${if (dataTest and cycleTest) {
+                    "BOTH"
+                } else if (dataTest) {
+                    "DATA"
+                } else {
+                    "CYCLE"
+                }}
+                    |>]
+                """.trimMargin().replace("\n", ""),
+            )
+            println(
+                """
+                |DATA LOG:
+                |MINE: ${test.final}
+                |YOURS: $after
+                |
+                |CYCLE LOG:
+                |MINE: ${prettyCycles(test.cycles)}
+                |YOURS: ${prettyCycles(cpu.bus.cycles)}
+                """.trimMargin(),
+            )
+            exitProcess(1)
+        }
+    }
+
     private fun compare(
         index: Int,
         test: Test,
     ) {
         parseState(test)
-        assert(
-            (test.final == after) and (cpu.bus.cycles == test.cycles),
-        ) {
-            "\n[$$opcode FAILED @ <TEST: $index NAME: ${test.name.uppercase()}>]\nMINE: ${test.final}\n${test.cycles}\nYOURS: $after\n${cpu.bus.cycles}"
-        }
+        compareStates(index, test)
     }
 
     fun run() {

@@ -27,18 +27,16 @@ class Bus(
         }
     }
 
-    fun readWord(
-        address: UShort,
-        wrapping: Boolean = false,
-    ): UShort {
+    fun readWord(address: UShort): UShort {
         val lo = readByte(address)
-        var hiAddr = (address + 1u)
-        if (wrapping) {
-            hiAddr %= 0x100u
-        }
-        val hi = readByte(hiAddr.toUShort())
+        val hi = readByte((address + 1u).toUShort())
         return concat(hi, lo)
     }
 
     fun dummyRead(address: UShort) = readByte(address)
+
+    fun dummyWrite(
+        address: UShort,
+        data: UByte,
+    ) = writeByte(address, data)
 }

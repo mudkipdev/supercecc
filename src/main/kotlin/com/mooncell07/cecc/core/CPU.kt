@@ -6,6 +6,7 @@ class CPU(
     val reg: Register = Register()
     var instr: INSTR = INSTAB[0xEA]
     private var lastAddr: UShort = 0x0000u
+    private var wasPageBoundaryCrossed: Boolean = false
     private val stack: UByteArray = UByteArray(0xFF) { 0u }
 
     // Fetchers
@@ -18,6 +19,18 @@ class CPU(
         val hi: UByte = fetch()
 
         return concat(hi, lo)
+    }
+
+    private fun handleInvalidAddress(
+        base: UShort,
+        effective: UShort,
+    ) {
+        if (MSB(base) != MSB(effective)) {
+            bus.dummyRead((effective - 0x100u).toUShort())
+            wasPageBoundaryCrossed = true
+        } else {
+            wasPageBoundaryCrossed = false
+        }
     }
 
     // ------------------------------------------------------------------------------------
@@ -34,15 +47,35 @@ class CPU(
 
     private fun getAbs(): UShort = fetchWord()
 
-    private fun getAbsX(): UShort = (fetchWord() + reg[RT.X]).toUShort()
+    private fun getAbsX(): UShort {
+        val base = fetchWord()
+        val effective = (base + reg[RT.X]).toUShort()
+        handleInvalidAddress(base, effective)
+        return effective
+    }
 
-    private fun getAbsY(): UShort = (fetchWord() + reg[RT.Y]).toUShort()
+    private fun getAbsY(): UShort {
+        val base = fetchWord()
+        val effective = (base + reg[RT.Y]).toUShort()
+        handleInvalidAddress(base, effective)
+        return effective
+    }
 
     private fun getZP(): UShort = fetch().toUShort()
 
-    private fun getZPX(): UShort = ((fetch() + reg[RT.X]) % 0x100u).toUShort()
+    private fun getZPX(): UShort {
+        val base = fetch()
+        val v = ((base + reg[RT.X]) % 0x100u).toUShort()
+        bus.dummyRead(base.toUShort())
+        return v
+    }
 
-    private fun getZPY(): UShort = ((fetch() + reg[RT.Y]) % 0x100u).toUShort()
+    private fun getZPY(): UShort {
+        val base = fetch()
+        val v = ((base + reg[RT.Y]) % 0x100u).toUShort()
+        bus.dummyRead(base.toUShort())
+        return v
+    }
 
     private fun getRel(): UShort = fetch().toByte().toUShort()
 
@@ -62,12 +95,20 @@ class CPU(
         val addr = fetch()
         bus.dummyRead(addr.toUShort())
         val base = (addr + reg[RT.X]) % 0x100u
-        return bus.readWord(base.toUShort(), wrapping = true)
+        val lo = bus.readByte(base.toUShort())
+        val hiAddr = (base + 1u) % 0x100u
+        val hi = bus.readByte(hiAddr.toUShort())
+        return concat(hi, lo)
     }
 
     private fun getIndY(): UShort {
-        val base = fetch()
-        return (bus.readWord(base.toUShort(), wrapping = true) + reg[RT.Y].toUShort()).toUShort()
+        val ptr = fetch()
+        val lo = bus.readByte(ptr.toUShort())
+        val hi = bus.readByte(((ptr + 1u) % 0x100u).toUShort())
+        val base = concat(hi, lo)
+        val effective = (base + reg[RT.Y].toUShort()).toUShort()
+        handleInvalidAddress(base, effective)
+        return effective
     }
 
     private fun readSrc8(mode: AddressingMode): UByte {
@@ -85,7 +126,16 @@ class CPU(
         }
     }
 
-    private fun readSrc16(mode: AddressingMode): UShort = decoders[mode]!!.invoke()
+    private fun readSrc16(mode: AddressingMode): UShort {
+        val v = decoders[mode]!!.invoke()
+        if (!wasPageBoundaryCrossed) {
+            when (mode) {
+                AM.INDIRECT_Y, AM.ABSOLUTE_Y, AM.ABSOLUTE_X -> bus.dummyRead(v)
+                else -> {}
+            }
+        }
+        return v
+    }
 
     // ------------------------------------------------------------------------------------
 
@@ -145,14 +195,18 @@ class CPU(
             reg[FT.N] = testBit(r.toInt(), 7)
             reg[FT.Z] = r.toInt() == 0
         }
+
+        bus.dummyRead(reg.PC)
     }
 
     private fun opSET() {
         reg[instr.flagType] = true
+        bus.dummyRead(reg.PC)
     }
 
     private fun opCLEAR() {
         reg[instr.flagType] = false
+        bus.dummyRead(reg.PC)
     }
 
     private fun opBRANCH() {
@@ -216,8 +270,15 @@ class CPU(
         }
 
         when (instr.addrMode) {
-            AM.ACCUMULATOR -> reg[RT.A] = v.toUByte()
+            AM.ACCUMULATOR -> {
+                bus.dummyRead(reg.PC)
+                reg[RT.A] = v.toUByte()
+            }
             else -> {
+                if ((instr.addrMode == AM.ABSOLUTE_X) and !wasPageBoundaryCrossed) {
+                    bus.dummyRead(lastAddr)
+                }
+                bus.dummyWrite(lastAddr, m.toUByte())
                 bus.writeByte(lastAddr, v.toUByte())
             }
         }
