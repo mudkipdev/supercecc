@@ -139,11 +139,14 @@ class CPU(
     // ------------------------------------------------------------------------------------
 
     private fun push(data: UByte) {
+        bus.dummyRead(reg.PC)
         bus.writeByte((reg[RT.SP] + 0x100u).toUShort(), data)
         reg[RT.SP]--
     }
 
     private fun pop(): UByte {
+        bus.dummyRead(reg.PC)
+        bus.dummyRead((reg[RT.SP] + 0x100u).toUShort())
         reg[RT.SP]++
         val v = bus.readByte((reg[RT.SP] + 0x100u).toUShort())
         return v
