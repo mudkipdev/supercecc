@@ -6,7 +6,7 @@ class CPU(
     val reg: Register = Register()
     var instr: INSTR = INSTAB[0xEA]
     private var lastAddr: UShort = 0x0000u
-    private var wasPageBoundaryCrossed: Boolean = false
+    private var pageCheck: Boolean = false
     private val stack: UByteArray = UByteArray(0xFF) { 0u }
 
     // Fetchers
@@ -25,8 +25,13 @@ class CPU(
         base: UShort,
         effective: UShort,
     ) {
-        wasPageBoundaryCrossed = MSB(base) != MSB(effective)
-        if (wasPageBoundaryCrossed) bus.dummyRead((effective - 0x100u).toUShort())
+        pageCheck = MSB(base) != MSB(effective)
+        if (pageCheck) {
+            when (MSB(effective).toInt() - MSB(base).toInt()) {
+                1, -255 -> bus.dummyRead((effective - 0x100u).toUShort())
+                -1, 255 -> bus.dummyRead((effective + 0x100u).toUShort())
+            }
+        }
     }
 
     // ------------------------------------------------------------------------------------
@@ -124,7 +129,7 @@ class CPU(
 
     private fun readSrc16(mode: AddressingMode): UShort {
         val v = decoders[mode]!!.invoke()
-        if (!wasPageBoundaryCrossed) {
+        if (!pageCheck) {
             when (mode) {
                 AM.INDIRECT_Y, AM.ABSOLUTE_Y, AM.ABSOLUTE_X -> bus.dummyRead(v)
                 else -> {}
@@ -161,7 +166,7 @@ class CPU(
                 bus.dummyRead(reg.PC)
             }
             else -> {
-                if ((instr.addrMode == AM.ABSOLUTE_X) and !wasPageBoundaryCrossed) {
+                if ((instr.addrMode == AM.ABSOLUTE_X) and !pageCheck) {
                     bus.dummyRead(lastAddr)
                 }
                 bus.dummyWrite(lastAddr, m)
@@ -228,7 +233,12 @@ class CPU(
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
 
-        if (f) reg.setPC((reg.PC + offset).toUShort())
+        if (f) {
+            bus.dummyRead(reg.PC)
+            val effective = (reg.PC + offset).toUShort()
+            handleInvalidAddress(reg.PC, effective)
+            reg.setPC(effective)
+        }
     }
 
     private fun opCOMPARE() {
@@ -285,7 +295,7 @@ class CPU(
                 reg[RT.A] = v.toUByte()
             }
             else -> {
-                if ((instr.addrMode == AM.ABSOLUTE_X) and !wasPageBoundaryCrossed) {
+                if ((instr.addrMode == AM.ABSOLUTE_X) and !pageCheck) {
                     bus.dummyRead(lastAddr)
                 }
                 bus.dummyWrite(lastAddr, m.toUByte())
