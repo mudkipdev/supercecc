@@ -138,16 +138,16 @@ class CPU(
     // Utils
     // ------------------------------------------------------------------------------------
 
-    private fun push(data: UByte) {
-        bus.dummyRead(reg.PC)
+    private fun push(
+        data: UByte,
+        dummy: Boolean = false,
+    ) {
         bus.writeByte((reg[RT.SP] + 0x100u).toUShort(), data)
-        reg[RT.SP]--
+        if (!dummy) reg[RT.SP]--
     }
 
-    private fun pop(): UByte {
-        bus.dummyRead(reg.PC)
-        bus.dummyRead((reg[RT.SP] + 0x100u).toUShort())
-        reg[RT.SP]++
+    private fun pop(dummy: Boolean = false): UByte {
+        if (!dummy) reg[RT.SP]++
         val v = bus.readByte((reg[RT.SP] + 0x100u).toUShort())
         return v
     }
@@ -302,10 +302,14 @@ class CPU(
         if (instr.regType == RT.SR) {
             r = setBit(r.toInt(), reg.getFlagOrdinal(FT.B)).toUByte()
         }
+        bus.dummyRead(reg.PC)
         push(r)
     }
 
     private fun opPULL() {
+        bus.dummyRead(reg.PC)
+        pop(dummy = true)
+
         val r = pop()
         reg[instr.regType] = r
 
@@ -331,10 +335,12 @@ class CPU(
     private fun opJMP() = reg.setPC(readSrc16(instr.addrMode))
 
     private fun opJSR() {
-        val v = (reg.PC + 1u).toUShort()
-        push(MSB(v))
-        push(LSB(v))
-        reg.setPC(readSrc16(instr.addrMode))
+        val lo = fetch()
+        pop(dummy = true)
+        push(MSB(reg.PC))
+        push(LSB(reg.PC))
+        val hi = bus.readByte(reg.PC)
+        reg.setPC(concat(hi, lo))
     }
 
     private fun opADC() {
@@ -370,27 +376,40 @@ class CPU(
     }
 
     private fun opBRK() {
+        bus.dummyRead(reg.PC)
+
         val v = (reg.PC + 1u).toUShort()
         push(MSB(v))
         push(LSB(v))
-        reg.setPC(bus.readWord(0xFFFEu))
         push(setBit(reg[RT.SR].toInt(), FT.B.ordinal - 1).toUByte())
+        reg.setPC(bus.readWord(0xFFFEu))
+
         reg[FT.I] = true
     }
 
     private fun opRTI() {
+        bus.dummyRead(reg.PC)
+        pop(dummy = true)
+
         reg[RT.SR] = pop()
-        reg[FT.B] = false
-        reg[FT.UNUSED2_IGN] = true
         val lo = pop()
         val hi = pop()
+
+        reg[FT.B] = false
+        reg[FT.UNUSED2_IGN] = true
+
         reg.setPC(concat(hi, lo))
     }
 
     private fun opRTS() {
+        bus.dummyRead(reg.PC)
+        pop(dummy = true)
+
         val lo = pop()
         val hi = pop()
-        reg.setPC((concat(hi, lo) + 1u).toUShort())
+
+        reg.setPC(concat(hi, lo))
+        bus.dummyRead(reg.PC++)
     }
 
     // ------------------------------------------------------------------------------------
