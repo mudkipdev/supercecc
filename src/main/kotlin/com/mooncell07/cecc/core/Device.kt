@@ -13,15 +13,21 @@ abstract class AbstractDevice {
     )
 }
 
-class Device : AbstractDevice() {
+open class Device : AbstractDevice() {
     override val type = DT.EMPTY
     override val size = -1
     override val base = -1
+    open val area: UByteArray = ubyteArrayOf()
 
     override fun write(
         address: UShort,
         data: UByte,
-    ): Unit = throw IllegalAccessError("Empty object doesn't support writing to.")
+    ) {
+        area[(address - base.toUShort()).toInt()] = data
+    }
 
-    override fun read(address: UShort): UByte = throw IllegalAccessError("Empty object doesn't support reading from.")
+    override fun read(address: UShort): UByte {
+        val a = area[(address - base.toUShort()).toInt()]
+        return a
+    }
 }

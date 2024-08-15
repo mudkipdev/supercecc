@@ -7,7 +7,6 @@ class CPU(
     var instr: INSTR = INSTAB[0xEA]
     private var lastAddr: UShort = 0x0000u
     private var pageCheck: Boolean = false
-    private val stack: UByteArray = UByteArray(0xFF) { 0u }
 
     // Fetchers
     // ------------------------------------------------------------------------------------
