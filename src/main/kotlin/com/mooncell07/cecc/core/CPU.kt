@@ -1,7 +1,7 @@
 package com.mooncell07.cecc.core
 
 class CPU(
-    val bus: Bus,
+    private val bus: Bus,
 ) {
     val reg: Register = Register()
     var instr: INSTR = INSTAB[0xEA]
@@ -12,7 +12,7 @@ class CPU(
     // Fetchers
     // ------------------------------------------------------------------------------------
 
-    private fun fetch(): UByte = bus.readByte(reg.PC++)
+    private fun fetch(): UByte = bus.read(reg.PC++)
 
     private fun fetchWord(): UShort {
         val lo: UByte = fetch()
@@ -82,12 +82,12 @@ class CPU(
 
     private fun getInd(): UShort {
         val base = fetchWord()
-        val lo = bus.readByte(base)
+        val lo = bus.read(base)
         val hi =
             if (LSB(base).toUInt() == 0xFFu) {
-                bus.readByte((base and 0xFF00u))
+                bus.read((base and 0xFF00u))
             } else {
-                bus.readByte((base + 1u).toUShort())
+                bus.read((base + 1u).toUShort())
             }
         return concat(hi, lo)
     }
@@ -96,23 +96,23 @@ class CPU(
         val addr = fetch()
         bus.dummyRead(addr.toUShort())
         val base = (addr + reg[RT.X]) % 0x100u
-        val lo = bus.readByte(base.toUShort())
+        val lo = bus.read(base.toUShort())
         val hiAddr = (base + 1u) % 0x100u
-        val hi = bus.readByte(hiAddr.toUShort())
+        val hi = bus.read(hiAddr.toUShort())
         return concat(hi, lo)
     }
 
     private fun getIndY(): UShort {
         val ptr = fetch()
-        val lo = bus.readByte(ptr.toUShort())
-        val hi = bus.readByte(((ptr + 1u) % 0x100u).toUShort())
+        val lo = bus.read(ptr.toUShort())
+        val hi = bus.read(((ptr + 1u) % 0x100u).toUShort())
         val base = concat(hi, lo)
         val effective = (base + reg[RT.Y].toUShort()).toUShort()
         handleInvalidAddress(base, effective)
         return effective
     }
 
-    private fun readSrc8(mode: AddressingMode): UByte {
+    private fun readSource(mode: AddressingMode): UByte {
         if (mode == AM.INDIRECT || mode == AM.RELATIVE) {
             throw IllegalArgumentException("readSrc() does not support INDIRECT and RELATIVE modes.")
         }
@@ -122,12 +122,12 @@ class CPU(
             AM.IMPLIED -> getImpl()
             else -> {
                 lastAddr = decoders[mode]!!.invoke()
-                bus.readByte(lastAddr)
+                bus.read(lastAddr)
             }
         }
     }
 
-    private fun readSrc16(mode: AddressingMode): UShort {
+    private fun readSourceWord(mode: AddressingMode): UShort {
         val v = decoders[mode]!!.invoke()
         if (!pageCheck) {
             when (mode) {
@@ -147,18 +147,18 @@ class CPU(
         data: UByte,
         dummy: Boolean = false,
     ) {
-        bus.writeByte((reg[RT.SP] + 0x100u).toUShort(), data)
+        bus.write((reg[RT.SP] + 0x100u).toUShort(), data)
         if (!dummy) reg[RT.SP]--
     }
 
     private fun pop(dummy: Boolean = false): UByte {
         if (!dummy) reg[RT.SP]++
-        val v = bus.readByte((reg[RT.SP] + 0x100u).toUShort())
+        val v = bus.read((reg[RT.SP] + 0x100u).toUShort())
         return v
     }
 
     private fun indcr(incr: Boolean) {
-        val m = readSrc8(instr.addrMode)
+        val m = readSource(instr.addrMode)
         val v = (if (incr) (m + 1u) else (m - 1u)).toUByte()
         when (instr.addrMode) {
             AM.IMPLIED -> {
@@ -170,7 +170,7 @@ class CPU(
                     bus.dummyRead(lastAddr)
                 }
                 bus.dummyWrite(lastAddr, m)
-                bus.writeByte(lastAddr, v)
+                bus.write(lastAddr, v)
             }
         }
         reg[FT.N] = testBit(v.toInt(), 7)
@@ -183,14 +183,14 @@ class CPU(
     // ------------------------------------------------------------------------------------
 
     private fun opLOAD() {
-        val m = readSrc8(instr.addrMode)
+        val m = readSource(instr.addrMode)
         reg[instr.regType] = m
         reg[FT.N] = testBit(m.toInt(), 7)
         reg[FT.Z] = m.toInt() == 0
     }
 
     private fun opSTORE() {
-        bus.writeByte(readSrc16(instr.addrMode), reg[instr.regType])
+        bus.write(readSourceWord(instr.addrMode), reg[instr.regType])
     }
 
     private fun opTRANSFER() {
@@ -225,7 +225,7 @@ class CPU(
     }
 
     private fun opBRANCH() {
-        val offset = readSrc16(instr.addrMode)
+        val offset = readSourceWord(instr.addrMode)
         val f =
             when (instr.insType) {
                 IT.BRSET -> reg[instr.flagType]
@@ -243,7 +243,7 @@ class CPU(
 
     private fun opCOMPARE() {
         val r = reg[instr.regType]
-        val m = readSrc8(instr.addrMode)
+        val m = readSource(instr.addrMode)
         val v = r - m
         reg[FT.C] = r >= m
         reg[FT.Z] = r == m
@@ -253,9 +253,9 @@ class CPU(
     private fun opLOGICAL() {
         val v =
             when (instr.insType) {
-                IT.AND -> reg[RT.A] and readSrc8(instr.addrMode)
-                IT.ORA -> reg[RT.A] or readSrc8(instr.addrMode)
-                IT.EOR -> reg[RT.A] xor readSrc8(instr.addrMode)
+                IT.AND -> reg[RT.A] and readSource(instr.addrMode)
+                IT.ORA -> reg[RT.A] or readSource(instr.addrMode)
+                IT.EOR -> reg[RT.A] xor readSource(instr.addrMode)
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
         reg[RT.A] = v
@@ -264,7 +264,7 @@ class CPU(
     }
 
     private fun opSHIFT() {
-        val m = readSrc8(instr.addrMode).toUInt()
+        val m = readSource(instr.addrMode).toUInt()
         val v: UInt
 
         when (instr.insType) {
@@ -299,7 +299,7 @@ class CPU(
                     bus.dummyRead(lastAddr)
                 }
                 bus.dummyWrite(lastAddr, m.toUByte())
-                bus.writeByte(lastAddr, v.toUByte())
+                bus.write(lastAddr, v.toUByte())
             }
         }
 
@@ -342,20 +342,20 @@ class CPU(
 
     private fun opNOP() = bus.dummyRead(reg.PC)
 
-    private fun opJMP() = reg.setPC(readSrc16(instr.addrMode))
+    private fun opJMP() = reg.setPC(readSourceWord(instr.addrMode))
 
     private fun opJSR() {
         val lo = fetch()
         pop(dummy = true)
         push(MSB(reg.PC))
         push(LSB(reg.PC))
-        val hi = bus.readByte(reg.PC)
+        val hi = bus.read(reg.PC)
         reg.setPC(concat(hi, lo))
     }
 
     private fun opADC() {
         val a = reg[RT.A]
-        val m = readSrc8(instr.addrMode)
+        val m = readSource(instr.addrMode)
         val c = (if (reg[FT.C]) 1u else 0u)
         val v = (m + a + c).toInt()
         reg[RT.A] = v.toUByte()
@@ -367,7 +367,7 @@ class CPU(
 
     private fun opSBC() {
         val a = reg[RT.A]
-        val m = readSrc8(instr.addrMode)
+        val m = readSource(instr.addrMode)
         val c = (if (reg[FT.C]) 0u else 1u)
         val v = (a - m - c).toInt()
         reg[RT.A] = v.toUByte()
@@ -379,7 +379,7 @@ class CPU(
 
     private fun opBIT() {
         val a = reg[RT.A]
-        val m = readSrc8(instr.addrMode)
+        val m = readSource(instr.addrMode)
         reg[FT.Z] = (a and m).toInt() == 0
         reg[FT.N] = testBit(m.toInt(), 7)
         reg[FT.V] = testBit(m.toInt(), 6)

@@ -57,9 +57,9 @@ class InstructionTest(
         cpu.reg[RT.SR] = test.initial.SR
 
         for (ramState in test.initial.ram) {
-            bus.writeByte(ramState[0].toUShort(), ramState[1].toUByte(), ext = true)
+            bus.write(ramState[0].toUShort(), ramState[1].toUByte())
         }
-        bus.cycles.clear()
+        debugDevice.cycles.clear()
     }
 
     private fun parseState(test: Test) {
@@ -72,7 +72,7 @@ class InstructionTest(
 
         after.ram = MutableList(test.final.ram.size) { listOf(2) }
         for ((i, ramState) in test.final.ram.withIndex()) {
-            after.ram[i] = listOf(ramState[0], bus.readByte(ramState[0].toUShort(), ext = true).toInt())
+            after.ram[i] = listOf(ramState[0], bus.read(ramState[0].toUShort()).toInt())
         }
     }
 
@@ -90,7 +90,7 @@ class InstructionTest(
         test: Test,
     ) {
         val dataTest = test.final != after
-        val cycleTest = (cpu.bus.cycles != test.cycles)
+        val cycleTest = (debugDevice.cycles != test.cycles)
         if (dataTest or cycleTest) {
             println(
                 """[
@@ -115,7 +115,7 @@ class InstructionTest(
                 |
                 |CYCLE LOG:
                 |MINE: ${prettyCycles(test.cycles)}
-                |YOURS: ${prettyCycles(cpu.bus.cycles)}
+                |YOURS: ${prettyCycles(debugDevice.cycles)}
                 """.trimMargin(),
             )
             exitProcess(1)
@@ -132,8 +132,11 @@ class InstructionTest(
 
     fun run() {
         for ((i, test) in tests.withIndex()) {
+            debugDevice.stopLogging()
             setEmuState(test)
+            debugDevice.startLogging()
             cpu.tick()
+            debugDevice.stopLogging()
             compare(i, test)
         }
         println("[$$opcode]: PASSED!")
