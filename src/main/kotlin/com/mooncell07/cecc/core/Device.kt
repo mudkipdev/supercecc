@@ -26,8 +26,5 @@ open class Device : AbstractDevice() {
         area[(address - base.toUShort()).toInt()] = data
     }
 
-    override fun read(address: UShort): UByte {
-        val a = area[(address - base.toUShort()).toInt()]
-        return a
-    }
+    override fun read(address: UShort): UByte = area[(address - base.toUShort()).toInt()]
 }
