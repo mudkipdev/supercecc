@@ -1,6 +1,7 @@
 package com.mooncell07.cecc.tests
 
 import com.mooncell07.cecc.core.*
+import com.mooncell07.cecc.core.graphics.PPU
 
 class DebugDevice : AbstractDevice() {
     override val type = DT.DEBUG
@@ -40,8 +41,9 @@ class DebugDevice : AbstractDevice() {
 }
 
 open class BaseEmulator {
+    private val clock = Clock(PPU())
     val debugDevice = DebugDevice()
-    val bus = Bus(debugDevice)
+    val bus = Bus(clock, debugDevice)
     val cpu = CPU(bus)
 
     init {

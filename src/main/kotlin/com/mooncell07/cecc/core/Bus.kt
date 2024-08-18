@@ -1,6 +1,7 @@
 package com.mooncell07.cecc.core
 
 class Bus(
+    private val clock: Clock,
     private vararg val deviceMap: AbstractDevice,
 ) : AbstractDevice() {
     override val type = DT.BUS
@@ -14,12 +15,18 @@ class Bus(
         }
     }
 
-    override fun read(address: UShort): UByte = deviceMap.find { address.toInt() <= (it.base + it.size) }!!.read(address)
+    override fun read(address: UShort): UByte {
+        clock.tick()
+        return deviceMap.find { address.toInt() <= (it.base + it.size) }!!.read(address)
+    }
 
     override fun write(
         address: UShort,
         data: UByte,
-    ) = deviceMap.find { address.toInt() <= (it.base + it.size) }!!.write(address, data)
+    ) {
+        clock.tick()
+        deviceMap.find { address.toInt() <= (it.base + it.size) }!!.write(address, data)
+    }
 
     fun readWord(address: UShort): UShort {
         val lo = read(address)
