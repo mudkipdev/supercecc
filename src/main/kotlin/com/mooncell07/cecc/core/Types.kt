@@ -33,6 +33,10 @@ enum class AddressingMode {
     ZEROPAGE_X, ZEROPAGE_Y
 }
 
+enum class PPUState {
+    PRERENDER, RENDER, POSTRENDER, VBLANK
+}
+
 typealias RT = RegType
 typealias FT = FlagType
 typealias IT = InstructionType
