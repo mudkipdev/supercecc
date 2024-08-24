@@ -1,6 +1,6 @@
 package com.mooncell07.cecc.core
 
-class Register {
+open class Register {
     var PC: UShort = 0xC000u
 
     // First value is unused.

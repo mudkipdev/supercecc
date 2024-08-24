@@ -2,8 +2,7 @@ package com.mooncell07.cecc.core
 
 class CPU(
     private val bus: Bus,
-) {
-    val reg: Register = Register()
+) : Register() {
     var instr: INSTR = INSTAB[0xEA]
     private var lastAddr: UShort = 0x0000u
     private var pageCheck: Boolean = false
@@ -11,7 +10,7 @@ class CPU(
     // Fetchers
     // ------------------------------------------------------------------------------------
 
-    private fun fetch(): UByte = bus.read(reg.PC++)
+    private fun fetch(): UByte = bus.read(PC++)
 
     private fun fetchWord(): UShort {
         val lo: UByte = fetch()
@@ -39,24 +38,24 @@ class CPU(
     // ------------------------------------------------------------------------------------
 
     // Only works for instrs that use pre defined regs
-    private fun getImpl(): UByte = reg[instr.regType]
+    private fun getImpl(): UByte = this[instr.regType]
 
     private fun getImm(): UByte = fetch()
 
-    private fun getAcc(): UByte = reg[RT.A]
+    private fun getAcc(): UByte = this[RT.A]
 
     private fun getAbs(): UShort = fetchWord()
 
     private fun getAbsX(): UShort {
         val base = fetchWord()
-        val effective = (base + reg[RT.X]).toUShort()
+        val effective = (base + this[RT.X]).toUShort()
         handleInvalidAddress(base, effective)
         return effective
     }
 
     private fun getAbsY(): UShort {
         val base = fetchWord()
-        val effective = (base + reg[RT.Y]).toUShort()
+        val effective = (base + this[RT.Y]).toUShort()
         handleInvalidAddress(base, effective)
         return effective
     }
@@ -65,14 +64,14 @@ class CPU(
 
     private fun getZPX(): UShort {
         val base = fetch()
-        val v = ((base + reg[RT.X]) % 0x100u).toUShort()
+        val v = ((base + this[RT.X]) % 0x100u).toUShort()
         bus.dummyRead(base.toUShort())
         return v
     }
 
     private fun getZPY(): UShort {
         val base = fetch()
-        val v = ((base + reg[RT.Y]) % 0x100u).toUShort()
+        val v = ((base + this[RT.Y]) % 0x100u).toUShort()
         bus.dummyRead(base.toUShort())
         return v
     }
@@ -94,7 +93,7 @@ class CPU(
     private fun getXInd(): UShort {
         val addr = fetch()
         bus.dummyRead(addr.toUShort())
-        val base = (addr + reg[RT.X]) % 0x100u
+        val base = (addr + this[RT.X]) % 0x100u
         val lo = bus.read(base.toUShort())
         val hiAddr = (base + 1u) % 0x100u
         val hi = bus.read(hiAddr.toUShort())
@@ -106,7 +105,7 @@ class CPU(
         val lo = bus.read(ptr.toUShort())
         val hi = bus.read(((ptr + 1u) % 0x100u).toUShort())
         val base = concat(hi, lo)
-        val effective = (base + reg[RT.Y].toUShort()).toUShort()
+        val effective = (base + this[RT.Y].toUShort()).toUShort()
         handleInvalidAddress(base, effective)
         return effective
     }
@@ -146,13 +145,13 @@ class CPU(
         data: UByte,
         dummy: Boolean = false,
     ) {
-        bus.write((reg[RT.SP] + 0x100u).toUShort(), data)
-        if (!dummy) reg[RT.SP]--
+        bus.write((this[RT.SP] + 0x100u).toUShort(), data)
+        if (!dummy) this[RT.SP]--
     }
 
     private fun pop(dummy: Boolean = false): UByte {
-        if (!dummy) reg[RT.SP]++
-        val v = bus.read((reg[RT.SP] + 0x100u).toUShort())
+        if (!dummy) this[RT.SP]++
+        val v = bus.read((this[RT.SP] + 0x100u).toUShort())
         return v
     }
 
@@ -161,8 +160,8 @@ class CPU(
         val v = (if (incr) (m + 1u) else (m - 1u)).toUByte()
         when (instr.addrMode) {
             AM.IMPLIED -> {
-                reg[instr.regType] = v
-                bus.dummyRead(reg.PC)
+                this[instr.regType] = v
+                bus.dummyRead(PC)
             }
             else -> {
                 if ((instr.addrMode == AM.ABSOLUTE_X) and !pageCheck) {
@@ -172,8 +171,8 @@ class CPU(
                 bus.write(lastAddr, v)
             }
         }
-        reg[FT.N] = testBit(v.toInt(), 7)
-        reg[FT.Z] = v.toInt() == 0
+        this[FT.N] = testBit(v.toInt(), 7)
+        this[FT.Z] = v.toInt() == 0
     }
 
     // ------------------------------------------------------------------------------------
@@ -183,83 +182,83 @@ class CPU(
 
     private fun opLOAD() {
         val m = readSource(instr.addrMode)
-        reg[instr.regType] = m
-        reg[FT.N] = testBit(m.toInt(), 7)
-        reg[FT.Z] = m.toInt() == 0
+        this[instr.regType] = m
+        this[FT.N] = testBit(m.toInt(), 7)
+        this[FT.Z] = m.toInt() == 0
     }
 
     private fun opSTORE() {
-        bus.write(readSourceWord(instr.addrMode), reg[instr.regType])
+        bus.write(readSourceWord(instr.addrMode), this[instr.regType])
     }
 
     private fun opTRANSFER() {
         val r =
             when (instr.insType) {
-                IT.TXA -> reg[RT.X]
-                IT.TYA -> reg[RT.Y]
-                IT.TXS -> reg[RT.X]
-                IT.TAY -> reg[RT.A]
-                IT.TAX -> reg[RT.A]
-                IT.TSX -> reg[RT.SP]
+                IT.TXA -> this[RT.X]
+                IT.TYA -> this[RT.Y]
+                IT.TXS -> this[RT.X]
+                IT.TAY -> this[RT.A]
+                IT.TAX -> this[RT.A]
+                IT.TSX -> this[RT.SP]
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
-        reg[instr.regType] = r
+        this[instr.regType] = r
 
         if (instr.insType != IT.TXS) {
-            reg[FT.N] = testBit(r.toInt(), 7)
-            reg[FT.Z] = r.toInt() == 0
+            this[FT.N] = testBit(r.toInt(), 7)
+            this[FT.Z] = r.toInt() == 0
         }
 
-        bus.dummyRead(reg.PC)
+        bus.dummyRead(PC)
     }
 
     private fun opSET() {
-        reg[instr.flagType] = true
-        bus.dummyRead(reg.PC)
+        this[instr.flagType] = true
+        bus.dummyRead(PC)
     }
 
     private fun opCLEAR() {
-        reg[instr.flagType] = false
-        bus.dummyRead(reg.PC)
+        this[instr.flagType] = false
+        bus.dummyRead(PC)
     }
 
     private fun opBRANCH() {
         val offset = readSourceWord(instr.addrMode)
         val f =
             when (instr.insType) {
-                IT.BRSET -> reg[instr.flagType]
-                IT.BRCLR -> !reg[instr.flagType]
+                IT.BRSET -> this[instr.flagType]
+                IT.BRCLR -> !this[instr.flagType]
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
 
         if (f) {
-            bus.dummyRead(reg.PC)
-            val effective = (reg.PC + offset).toUShort()
-            handleInvalidAddress(reg.PC, effective)
-            reg.setPC(effective)
+            bus.dummyRead(PC)
+            val effective = (PC + offset).toUShort()
+            handleInvalidAddress(PC, effective)
+            setPC(effective)
         }
     }
 
     private fun opCOMPARE() {
-        val r = reg[instr.regType]
+        val r = this[instr.regType]
         val m = readSource(instr.addrMode)
         val v = r - m
-        reg[FT.C] = r >= m
-        reg[FT.Z] = r == m
-        reg[FT.N] = testBit(v.toInt(), 7)
+        this[FT.C] = r >= m
+        this[FT.Z] = r == m
+        this[FT.N] = testBit(v.toInt(), 7)
     }
 
     private fun opLOGICAL() {
         val v =
             when (instr.insType) {
-                IT.AND -> reg[RT.A] and readSource(instr.addrMode)
-                IT.ORA -> reg[RT.A] or readSource(instr.addrMode)
-                IT.EOR -> reg[RT.A] xor readSource(instr.addrMode)
+                IT.AND -> this[RT.A] and readSource(instr.addrMode)
+                IT.ORA -> this[RT.A] or readSource(instr.addrMode)
+                IT.EOR -> this[RT.A] xor readSource(instr.addrMode)
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
-        reg[RT.A] = v
-        reg[FT.N] = testBit(v.toInt(), 7)
-        reg[FT.Z] = v.toInt() == 0
+        this[RT.A] = v
+        this[FT.N] = testBit(v.toInt(), 7)
+        this[FT.Z] = v.toInt() == 0
     }
 
     private fun opSHIFT() {
@@ -269,29 +268,29 @@ class CPU(
         when (instr.insType) {
             IT.ASL -> {
                 v = m shl 1
-                reg[FT.C] = testBit(m.toInt(), 7)
+                this[FT.C] = testBit(m.toInt(), 7)
             }
             IT.LSR -> {
                 v = m shr 1
-                reg[FT.C] = testBit(m.toInt(), 0)
+                this[FT.C] = testBit(m.toInt(), 0)
             }
             IT.ROL -> {
-                val c = (if (reg[FT.C]) 1 else 0)
+                val c = (if (this[FT.C]) 1 else 0)
                 v = (m shl 1) or c.toUInt()
-                reg[FT.C] = testBit(m.toInt(), 7)
+                this[FT.C] = testBit(m.toInt(), 7)
             }
             IT.ROR -> {
-                val c = (if (reg[FT.C]) 1 else 0)
+                val c = (if (this[FT.C]) 1 else 0)
                 v = (m shr 1) or (c.toUInt() shl 7)
-                reg[FT.C] = testBit(m.toInt(), 0)
+                this[FT.C] = testBit(m.toInt(), 0)
             }
             else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
         }
 
         when (instr.addrMode) {
             AM.ACCUMULATOR -> {
-                bus.dummyRead(reg.PC)
-                reg[RT.A] = v.toUByte()
+                bus.dummyRead(PC)
+                this[RT.A] = v.toUByte()
             }
             else -> {
                 if ((instr.addrMode == AM.ABSOLUTE_X) and !pageCheck) {
@@ -302,35 +301,35 @@ class CPU(
             }
         }
 
-        reg[FT.N] = testBit(v.toInt(), 7)
-        reg[FT.Z] = (v % 0x100u).toInt() == 0
+        this[FT.N] = testBit(v.toInt(), 7)
+        this[FT.Z] = (v % 0x100u).toInt() == 0
     }
 
     private fun opPUSH() {
-        var r = reg[instr.regType]
+        var r = this[instr.regType]
         if (instr.regType == RT.SR) {
-            r = setBit(r.toInt(), reg.getFlagOrdinal(FT.B)).toUByte()
+            r = setBit(r.toInt(), getFlagOrdinal(FT.B)).toUByte()
         }
-        bus.dummyRead(reg.PC)
+        bus.dummyRead(PC)
         push(r)
     }
 
     private fun opPULL() {
-        bus.dummyRead(reg.PC)
+        bus.dummyRead(PC)
         pop(dummy = true)
 
         val r = pop()
-        reg[instr.regType] = r
+        this[instr.regType] = r
 
         when (instr.regType) {
             RT.SR -> {
-                reg[FT.B] = false
-                reg[FT.UNUSED2_IGN] = true
+                this[FT.B] = false
+                this[FT.UNUSED2_IGN] = true
             }
 
             else -> {
-                reg[FT.N] = testBit(r.toInt(), 7)
-                reg[FT.Z] = r.toInt() == 0
+                this[FT.N] = testBit(r.toInt(), 7)
+                this[FT.Z] = r.toInt() == 0
             }
         }
     }
@@ -339,86 +338,86 @@ class CPU(
 
     private fun opDECREMENT() = indcr(incr = false)
 
-    private fun opNOP() = bus.dummyRead(reg.PC)
+    private fun opNOP() = bus.dummyRead(PC)
 
-    private fun opJMP() = reg.setPC(readSourceWord(instr.addrMode))
+    private fun opJMP() = setPC(readSourceWord(instr.addrMode))
 
     private fun opJSR() {
         val lo = fetch()
         pop(dummy = true)
-        push(MSB(reg.PC))
-        push(LSB(reg.PC))
-        val hi = bus.read(reg.PC)
-        reg.setPC(concat(hi, lo))
+        push(MSB(PC))
+        push(LSB(PC))
+        val hi = bus.read(PC)
+        setPC(concat(hi, lo))
     }
 
     private fun opADC() {
-        val a = reg[RT.A]
+        val a = this[RT.A]
         val m = readSource(instr.addrMode)
-        val c = (if (reg[FT.C]) 1u else 0u)
+        val c = (if (this[FT.C]) 1u else 0u)
         val v = (m + a + c).toInt()
-        reg[RT.A] = v.toUByte()
-        reg[FT.C] = v > 0xFF
-        reg[FT.Z] = (v % 0x100) == 0
-        reg[FT.N] = testBit(v, 7)
-        reg.checkOverflow(a, m, v.toUByte())
+        this[RT.A] = v.toUByte()
+        this[FT.C] = v > 0xFF
+        this[FT.Z] = (v % 0x100) == 0
+        this[FT.N] = testBit(v, 7)
+        checkOverflow(a, m, v.toUByte())
     }
 
     private fun opSBC() {
-        val a = reg[RT.A]
+        val a = this[RT.A]
         val m = readSource(instr.addrMode)
-        val c = (if (reg[FT.C]) 0u else 1u)
+        val c = (if (this[FT.C]) 0u else 1u)
         val v = (a - m - c).toInt()
-        reg[RT.A] = v.toUByte()
-        reg[FT.C] = v >= 0
-        reg[FT.Z] = (v % 0x100) == 0
-        reg[FT.N] = testBit(v, 7)
-        reg.checkOverflow(a, m, v.toUByte(), sbc = true)
+        this[RT.A] = v.toUByte()
+        this[FT.C] = v >= 0
+        this[FT.Z] = (v % 0x100) == 0
+        this[FT.N] = testBit(v, 7)
+        checkOverflow(a, m, v.toUByte(), sbc = true)
     }
 
     private fun opBIT() {
-        val a = reg[RT.A]
+        val a = this[RT.A]
         val m = readSource(instr.addrMode)
-        reg[FT.Z] = (a and m).toInt() == 0
-        reg[FT.N] = testBit(m.toInt(), 7)
-        reg[FT.V] = testBit(m.toInt(), 6)
+        this[FT.Z] = (a and m).toInt() == 0
+        this[FT.N] = testBit(m.toInt(), 7)
+        this[FT.V] = testBit(m.toInt(), 6)
     }
 
     private fun opBRK() {
-        bus.dummyRead(reg.PC)
+        bus.dummyRead(PC)
 
-        val v = (reg.PC + 1u).toUShort()
+        val v = (PC + 1u).toUShort()
         push(MSB(v))
         push(LSB(v))
-        push(setBit(reg[RT.SR].toInt(), FT.B.ordinal - 1).toUByte())
-        reg.setPC(bus.readWord(0xFFFEu))
+        push(setBit(this[RT.SR].toInt(), FT.B.ordinal - 1).toUByte())
+        setPC(bus.readWord(0xFFFEu))
 
-        reg[FT.I] = true
+        this[FT.I] = true
     }
 
     private fun opRTI() {
-        bus.dummyRead(reg.PC)
+        bus.dummyRead(PC)
         pop(dummy = true)
 
-        reg[RT.SR] = pop()
+        this[RT.SR] = pop()
         val lo = pop()
         val hi = pop()
 
-        reg[FT.B] = false
-        reg[FT.UNUSED2_IGN] = true
+        this[FT.B] = false
+        this[FT.UNUSED2_IGN] = true
 
-        reg.setPC(concat(hi, lo))
+        setPC(concat(hi, lo))
     }
 
     private fun opRTS() {
-        bus.dummyRead(reg.PC)
+        bus.dummyRead(PC)
         pop(dummy = true)
 
         val lo = pop()
         val hi = pop()
 
-        reg.setPC(concat(hi, lo))
-        bus.dummyRead(reg.PC++)
+        setPC(concat(hi, lo))
+        bus.dummyRead(PC++)
     }
 
     // ------------------------------------------------------------------------------------
