@@ -1,6 +1,12 @@
 plugins {
     kotlin("jvm") version "2.0.0"
+    id("org.openjfx.javafxplugin") version "0.1.0"
     application
+}
+
+javafx {
+    version = "22.0.1"
+    modules = mutableListOf("javafx.controls", "javafx.fxml")
 }
 
 application.mainClass = "com.mooncell07.cecc.MainKt"
