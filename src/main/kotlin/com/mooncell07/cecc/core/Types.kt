@@ -9,9 +9,13 @@ enum class FlagType { NONE, C, Z, I, D, B, UNUSED2_IGN, V, N }
 enum class DeviceType {
     EMPTY, DEBUG, BUS, CARTRIDGE,
     ZEROPAGE, STACK, RAMEx, CHRROM,
-    GBUS
+    GBUS, PPUREGISTERS
 }
 
+enum class PPURegType {
+    PPUCTRL, PPUMASK, PPUSTATUS, OAMADDR,
+    OAMDATA, PPUSCROLL, PPUADDR, PPUDATA,
+}
 // Opcode Labels for generalised destination types differ from the standard labels.
 // Register Transfer opcodes are exempted.
 enum class InstructionType {

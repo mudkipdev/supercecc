@@ -41,7 +41,8 @@ class DebugDevice : AbstractDevice() {
 }
 
 open class BaseEmulator {
-    private val clock = Clock(PPU())
+    private val ppuRegs = PPURegisters()
+    private val clock = Clock(PPU(ppuRegs))
     val debugDevice = DebugDevice()
     val bus = Bus(clock, debugDevice)
     val cpu = CPU(bus)

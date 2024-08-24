@@ -1,18 +1,22 @@
 package com.mooncell07.cecc.core.graphics
 
+import com.mooncell07.cecc.core.PPURegisters
 import com.mooncell07.cecc.core.PPUState
 
-class PPU {
+class PPU(
+    private val regs: PPURegisters,
+) {
     private var dots = 0
     private var scanline = 0
     private var state: PPUState = PPUState.RENDER
 
     fun tick() {
         dots++
-        if (dots == 100) {
+        if (dots == 341) {
             scanline++
             dots = 0
         }
+
         when (state) {
             PPUState.RENDER -> {
                 if (scanline == 240) state = PPUState.POSTRENDER
