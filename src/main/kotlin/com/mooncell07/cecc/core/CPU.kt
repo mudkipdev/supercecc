@@ -38,22 +38,22 @@ class CPU(
     // ------------------------------------------------------------------------------------
 
     // Only works for instrs that use pre defined regs
-    private fun getImpl(): UByte = this[instr.regType]
+    private fun getIMPL(): UByte = this[instr.regType]
 
-    private fun getImm(): UByte = fetch()
+    private fun getIMM(): UByte = fetch()
 
-    private fun getAcc(): UByte = this[RT.A]
+    private fun getACC(): UByte = this[RT.A]
 
-    private fun getAbs(): UShort = fetchWord()
+    private fun getABS(): UShort = fetchWord()
 
-    private fun getAbsX(): UShort {
+    private fun getABSX(): UShort {
         val base = fetchWord()
         val effective = (base + this[RT.X]).toUShort()
         handleInvalidAddress(base, effective)
         return effective
     }
 
-    private fun getAbsY(): UShort {
+    private fun getABSY(): UShort {
         val base = fetchWord()
         val effective = (base + this[RT.Y]).toUShort()
         handleInvalidAddress(base, effective)
@@ -76,9 +76,9 @@ class CPU(
         return v
     }
 
-    private fun getRel(): UShort = fetch().toByte().toUShort()
+    private fun getREL(): UShort = fetch().toByte().toUShort()
 
-    private fun getInd(): UShort {
+    private fun getIND(): UShort {
         val base = fetchWord()
         val lo = bus.read(base)
         val hi =
@@ -90,7 +90,7 @@ class CPU(
         return concat(hi, lo)
     }
 
-    private fun getXInd(): UShort {
+    private fun getXIND(): UShort {
         val addr = fetch()
         bus.dummyRead(addr.toUShort())
         val base = (addr + this[RT.X]) % 0x100u
@@ -100,7 +100,7 @@ class CPU(
         return concat(hi, lo)
     }
 
-    private fun getIndY(): UShort {
+    private fun getINDY(): UShort {
         val ptr = fetch()
         val lo = bus.read(ptr.toUShort())
         val hi = bus.read(((ptr + 1u) % 0x100u).toUShort())
@@ -115,9 +115,9 @@ class CPU(
             throw IllegalArgumentException("readSrc() does not support INDIRECT and RELATIVE modes.")
         }
         return when (mode) {
-            AM.IMMEDIATE -> getImm()
-            AM.ACCUMULATOR -> getAcc()
-            AM.IMPLIED -> getImpl()
+            AM.IMMEDIATE -> getIMM()
+            AM.ACCUMULATOR -> getACC()
+            AM.IMPLIED -> getIMPL()
             else -> {
                 lastAddr = decoders[mode]!!.invoke()
                 bus.read(lastAddr)
@@ -467,15 +467,15 @@ class CPU(
 
     private val decoders: Map<AM, () -> UShort> =
         mapOf(
-            AM.ABSOLUTE to { getAbs() },
-            AM.ABSOLUTE_X to { getAbsX() },
-            AM.ABSOLUTE_Y to { getAbsY() },
-            AM.X_INDIRECT to { getXInd() },
-            AM.INDIRECT_Y to { getIndY() },
+            AM.ABSOLUTE to { getABS() },
+            AM.ABSOLUTE_X to { getABSX() },
+            AM.ABSOLUTE_Y to { getABSY() },
+            AM.X_INDIRECT to { getXIND() },
+            AM.INDIRECT_Y to { getINDY() },
             AM.ZEROPAGE to { getZP() },
             AM.ZEROPAGE_X to { getZPX() },
             AM.ZEROPAGE_Y to { getZPY() },
-            AM.RELATIVE to { getRel() },
-            AM.INDIRECT to { getInd() },
+            AM.RELATIVE to { getREL() },
+            AM.INDIRECT to { getIND() },
         )
 }
