@@ -8,7 +8,8 @@ class PPU(
 ) {
     private var dots = 0
     private var scanline = 0
-    private var state: PPUState = PPUState.RENDER
+    private var state: PPUState = PPUState.PRERENDER
+    private val fetcher: Fetcher = Fetcher()
 
     fun tick() {
         dots++

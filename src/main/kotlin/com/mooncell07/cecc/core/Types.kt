@@ -16,6 +16,11 @@ enum class PPURegType {
     PPUCTRL, PPUMASK, PPUSTATUS, OAMADDR,
     OAMDATA, PPUSCROLL, PPUADDR, PPUDATA,
 }
+
+enum class FetcherState {
+    NT, AT, BGLSBITS, BGMSBITS
+}
+
 // Opcode Labels for generalised destination types differ from the standard labels.
 // Register Transfer opcodes are exempted.
 enum class InstructionType {

@@ -49,5 +49,6 @@ open class BaseEmulator {
 
     init {
         buildInstructionTable()
+        cpu.PC = 0xC000u
     }
 }

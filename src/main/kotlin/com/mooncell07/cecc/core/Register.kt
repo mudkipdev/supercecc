@@ -1,7 +1,7 @@
 package com.mooncell07.cecc.core
 
 open class Register {
-    var PC: UShort = 0xC000u
+    var PC: UShort = 0x0000u
 
     // First value is unused.
     private val regs: Array<UByte> = arrayOf(0x00u, 0x00u, 0x00u, 0x00u, 0xFDu, 0x24u)
