@@ -2,10 +2,10 @@ package com.mooncell07.cecc.core.graphics
 
 import com.mooncell07.cecc.core.AbstractDevice
 import com.mooncell07.cecc.core.Cartridge
-import com.mooncell07.cecc.core.DeviceType
 import com.mooncell07.cecc.core.Device
+import com.mooncell07.cecc.core.DeviceType
 
-class CHRROM(
+class CharacterRom(
     private val cart: Cartridge,
 ) : Device() {
     override val type = DeviceType.CHRROM
@@ -22,7 +22,7 @@ class CHRROM(
 }
 
 class GBUS(
-    private val chrrom: CHRROM,
+    private val characterRom: CharacterRom,
 ) : AbstractDevice() {
     override val type = DeviceType.GBUS
     override val size = 0x3FFF
@@ -30,7 +30,7 @@ class GBUS(
 
     override fun read(address: UShort): UByte {
         if (address < 0x2000u) {
-            return chrrom.read(address)
+            return characterRom.read(address)
         }
 
         return 0xFFu
@@ -38,7 +38,7 @@ class GBUS(
 
     override fun write(address: UShort, data: UByte) {
         if (address < 0x2000u) {
-            chrrom.write(address, data)
+            characterRom.write(address, data)
         }
     }
 }

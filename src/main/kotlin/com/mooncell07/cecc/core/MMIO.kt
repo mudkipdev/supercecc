@@ -6,12 +6,9 @@ class PPURegisters : Device() {
     override val base = 0x2000
     override val area: UByteArray = UByteArray(size + 1) { 0u }
 
-    operator fun get(ppuRegisterType: PPURegisterType): UByte = area[ppuRegisterType.ordinal]
+    operator fun get(type: PPURegisterType): UByte = area[type.ordinal]
 
-    operator fun set(
-        ppuRegisterType: PPURegisterType,
-        data: UByte,
-    ) {
-        area[ppuRegisterType.ordinal] = data
+    operator fun set(type: PPURegisterType, data: UByte) {
+        area[type.ordinal] = data
     }
 }

@@ -10,6 +10,7 @@ class Bus(
 
     init {
         deviceMap.sortBy { it.base }
+
         for (device in deviceMap) {
             println("LOADED DEVICE: ${device.type.name} @ $${(device.base + device.size).toUShort().toHexString()}")
         }
@@ -20,10 +21,7 @@ class Bus(
         return deviceMap.find { address.toInt() <= (it.base + it.size) }!!.read(address)
     }
 
-    override fun write(
-        address: UShort,
-        data: UByte,
-    ) {
+    override fun write(address: UShort, data: UByte) {
         clock.tick()
         deviceMap.find { address.toInt() <= (it.base + it.size) }!!.write(address, data)
     }
@@ -36,8 +34,5 @@ class Bus(
 
     fun dummyRead(address: UShort) = read(address)
 
-    fun dummyWrite(
-        address: UShort,
-        data: UByte,
-    ) = write(address, data)
+    fun dummyWrite(address: UShort, data: UByte) = write(address, data)
 }

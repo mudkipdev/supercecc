@@ -49,7 +49,7 @@ class InstructionTest(
     }
 
     private fun setEmulatorState(test: Test) {
-        cpu.PC = test.initial.PC
+        cpu.pc = test.initial.PC
         cpu[RegisterType.A] = test.initial.A
         cpu[RegisterType.X] = test.initial.X
         cpu[RegisterType.Y] = test.initial.Y
@@ -64,7 +64,7 @@ class InstructionTest(
     }
 
     private fun parseState(test: Test) {
-        after.PC = cpu.PC
+        after.PC = cpu.pc
         after.A = cpu[RegisterType.A]
         after.X = cpu[RegisterType.X]
         after.Y = cpu[RegisterType.Y]
@@ -86,7 +86,7 @@ class InstructionTest(
             )
         }}"
 
-    private fun compareStates(index: Int, test: Test, ) {
+    private fun compareStates(index: Int, test: Test) {
         val dataTest = test.final != after
         val cycleTest = (debugDevice.cycles != test.cycles)
         if (dataTest or cycleTest) {
@@ -120,7 +120,7 @@ class InstructionTest(
         }
     }
 
-    private fun compare(index: Int, test: Test, ) {
+    private fun compare(index: Int, test: Test) {
         parseState(test)
         compareStates(index, test)
     }

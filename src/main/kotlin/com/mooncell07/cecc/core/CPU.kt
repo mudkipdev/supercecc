@@ -3,39 +3,36 @@ package com.mooncell07.cecc.core
 class CPU(
     private val bus: Bus,
 ) : Register() {
-    var instruction: Instruction = instructionTable[0xEA]
+    private var instruction: Instruction = instructionTable[0xEA]
     private var lastAddr: UShort = 0x0000u
     private var pageCheck: Boolean = false
 
     // Fetchers
-    // ------------------------------------------------------------------------------------
+    ///////////////////////////////////////////////////////////////////////////////////////
 
-    private fun fetch(): UByte = bus.read(PC++)
+    private fun fetch(): UByte = bus.read(pc++)
 
     private fun fetchWord(): UShort {
         val lo: UByte = fetch()
         val hi: UByte = fetch()
-
         return concat(hi, lo)
     }
 
-    private fun handleInvalidAddress(
-        base: UShort,
-        effective: UShort,
-    ) {
-        pageCheck = MSB(base) != MSB(effective)
+    private fun handleInvalidAddress(base: UShort, effective: UShort) {
+        pageCheck = mostSignificantByte(base) != mostSignificantByte(effective)
+
         if (pageCheck) {
-            when (MSB(effective).toInt() - MSB(base).toInt()) {
+            when (mostSignificantByte(effective).toInt() - mostSignificantByte(base).toInt()) {
                 1, -255 -> bus.dummyRead((effective - 0x100u).toUShort())
                 -1, 255 -> bus.dummyRead((effective + 0x100u).toUShort())
             }
         }
     }
 
-    // ------------------------------------------------------------------------------------
+    ///////////////////////////////////////////////////////////////////////////////////////
 
     // Handlers for different addressing modes
-    // ------------------------------------------------------------------------------------
+    ///////////////////////////////////////////////////////////////////////////////////////
 
     // Only works for instructions that use pre defined registers
     private fun getIMPL(): UByte = this[instruction.registerType]
@@ -82,7 +79,7 @@ class CPU(
         val base = fetchWord()
         val lo = bus.read(base)
         val hi =
-            if (LSB(base).toUInt() == 0xFFu) {
+            if (leastSignificantByte(base).toUInt() == 0xFFu) {
                 bus.read((base and 0xFF00u))
             } else {
                 bus.read((base + 1u).toUShort())
@@ -139,10 +136,9 @@ class CPU(
         return v
     }
 
-    // ------------------------------------------------------------------------------------
-
+    ///////////////////////////////////////////////////////////////////////////////////////
     // Utils
-    // ------------------------------------------------------------------------------------
+    ///////////////////////////////////////////////////////////////////////////////////////
 
     private fun push(
         data: UByte,
@@ -165,7 +161,7 @@ class CPU(
         when (instruction.addressingMode) {
             AddressingMode.IMPLIED -> {
                 this[instruction.registerType] = v
-                bus.dummyRead(PC)
+                bus.dummyRead(pc)
             }
 
             else -> {
@@ -181,10 +177,9 @@ class CPU(
         this[FlagType.Z] = v.toInt() == 0
     }
 
-    // ------------------------------------------------------------------------------------
-
+    ///////////////////////////////////////////////////////////////////////////////////////
     // Instruction Handlers
-    // ------------------------------------------------------------------------------------
+    ///////////////////////////////////////////////////////////////////////////////////////
 
     private fun operationLoad() {
         val m = readSource(instruction.addressingMode)
@@ -215,17 +210,17 @@ class CPU(
             this[FlagType.Z] = r.toInt() == 0
         }
 
-        bus.dummyRead(PC)
+        bus.dummyRead(pc)
     }
 
     private fun operationSet() {
         this[instruction.flagType] = true
-        bus.dummyRead(PC)
+        bus.dummyRead(pc)
     }
 
     private fun operationClear() {
         this[instruction.flagType] = false
-        bus.dummyRead(PC)
+        bus.dummyRead(pc)
     }
 
     private fun operationBranch() {
@@ -238,10 +233,10 @@ class CPU(
             }
 
         if (f) {
-            bus.dummyRead(PC)
-            val effective = (PC + offset).toUShort()
-            handleInvalidAddress(PC, effective)
-            setPC(effective)
+            bus.dummyRead(pc)
+            val effective = (pc + offset).toUShort()
+            handleInvalidAddress(pc, effective)
+            pc = effective
         }
     }
 
@@ -295,7 +290,7 @@ class CPU(
 
         when (instruction.addressingMode) {
             AddressingMode.ACCUMULATOR -> {
-                bus.dummyRead(PC)
+                bus.dummyRead(pc)
                 this[RegisterType.A] = v.toUByte()
             }
             else -> {
@@ -316,12 +311,12 @@ class CPU(
         if (instruction.registerType == RegisterType.SR) {
             r = setBit(r.toInt(), getFlagOrdinal(FlagType.B)).toUByte()
         }
-        bus.dummyRead(PC)
+        bus.dummyRead(pc)
         push(r)
     }
 
     private fun opPULL() {
-        bus.dummyRead(PC)
+        bus.dummyRead(pc)
         pop(dummy = true)
 
         val r = pop()
@@ -344,17 +339,19 @@ class CPU(
 
     private fun opDECREMENT() = indcr(incr = false)
 
-    private fun opNOP() = bus.dummyRead(PC)
+    private fun opNOP() = bus.dummyRead(pc)
 
-    private fun opJMP() = setPC(readSourceWord(instruction.addressingMode))
+    private fun opJMP() {
+        pc = readSourceWord(instruction.addressingMode)
+    }
 
     private fun opJSR() {
         val lo = fetch()
         pop(dummy = true)
-        push(MSB(PC))
-        push(LSB(PC))
-        val hi = bus.read(PC)
-        setPC(concat(hi, lo))
+        push(mostSignificantByte(pc))
+        push(leastSignificantByte(pc))
+        val hi = bus.read(pc)
+        pc = concat(hi, lo)
     }
 
     private fun opADC() {
@@ -369,7 +366,7 @@ class CPU(
         checkOverflow(a, m, v.toUByte())
     }
 
-    private fun opSBC() {
+    private fun operationSbc() {
         val a = this[RegisterType.A]
         val m = readSource(instruction.addressingMode)
         val c = (if (this[FlagType.C]) 0u else 1u)
@@ -381,7 +378,7 @@ class CPU(
         checkOverflow(a, m, v.toUByte(), sbc = true)
     }
 
-    private fun opBIT() {
+    private fun operationBit() {
         val a = this[RegisterType.A]
         val m = readSource(instruction.addressingMode)
         this[FlagType.Z] = (a and m).toInt() == 0
@@ -389,20 +386,20 @@ class CPU(
         this[FlagType.V] = testBit(m.toInt(), 6)
     }
 
-    private fun opBRK() {
-        bus.dummyRead(PC)
+    private fun operationBrk() {
+        bus.dummyRead(pc)
 
-        val v = (PC + 1u).toUShort()
-        push(MSB(v))
-        push(LSB(v))
+        val v = (pc + 1u).toUShort()
+        push(mostSignificantByte(v))
+        push(leastSignificantByte(v))
         push(setBit(this[RegisterType.SR].toInt(), FlagType.B.ordinal - 1).toUByte())
-        setPC(bus.readWord(0xFFFEu))
+        pc = bus.readWord(0xFFFEu)
 
         this[FlagType.I] = true
     }
 
-    private fun opRTI() {
-        bus.dummyRead(PC)
+    private fun operationRti() {
+        bus.dummyRead(pc)
         pop(dummy = true)
 
         this[RegisterType.SR] = pop()
@@ -412,21 +409,21 @@ class CPU(
         this[FlagType.B] = false
         this[FlagType.UNUSED2_IGN] = true
 
-        setPC(concat(hi, lo))
+        pc = concat(hi, lo)
     }
 
-    private fun opRTS() {
-        bus.dummyRead(PC)
+    private fun operationRts() {
+        bus.dummyRead(pc)
         pop(dummy = true)
 
         val lo = pop()
         val hi = pop()
 
-        setPC(concat(hi, lo))
-        bus.dummyRead(PC++)
+        pc = concat(hi, lo)
+        bus.dummyRead(pc++)
     }
 
-    // ------------------------------------------------------------------------------------
+    ///////////////////////////////////////////////////////////////////////////////////////
 
     fun tick() {
         instruction = instructionTable[fetch().toInt()]
@@ -455,7 +452,7 @@ class CPU(
         InstructionType.INCREMENT to { opINCREMENT() },
         InstructionType.DECREMENT to { opDECREMENT() },
         InstructionType.ADC to { opADC() },
-        InstructionType.SBC to { opSBC() },
+        InstructionType.SBC to { operationSbc() },
         InstructionType.AND to { opLOGICAL() },
         InstructionType.EOR to { opLOGICAL() },
         InstructionType.ORA to { opLOGICAL() },
@@ -464,10 +461,10 @@ class CPU(
         InstructionType.ROL to { opSHIFT() },
         InstructionType.ROR to { opSHIFT() },
         InstructionType.COMPARE to { opCOMPARE() },
-        InstructionType.BIT to { opBIT() },
-        InstructionType.BRK to { opBRK() },
-        InstructionType.RTI to { opRTI() },
-        InstructionType.RTS to { opRTS() }
+        InstructionType.BIT to { operationBit() },
+        InstructionType.BRK to { operationBrk() },
+        InstructionType.RTI to { operationRti() },
+        InstructionType.RTS to { operationRts() }
     )
 
     private val decoders: Map<AddressingMode, () -> UShort> = mapOf(

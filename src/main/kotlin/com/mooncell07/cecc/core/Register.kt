@@ -1,7 +1,7 @@
 package com.mooncell07.cecc.core
 
 open class Register {
-    var PC: UShort = 0x0000u
+    var pc: UShort = 0x0000u
 
     // First value is unused.
     private val registers: Array<UByte> = arrayOf(0x00u, 0x00u, 0x00u, 0x00u, 0xFDu, 0x24u)
@@ -11,7 +11,7 @@ open class Register {
         return registers[registerType.ordinal]
     }
 
-    operator fun set(registerType: RegisterType, data: UByte, ) {
+    operator fun set(registerType: RegisterType, data: UByte) {
         assert(registerType != RegisterType.NONE) { "$registerType type register is not supported for REGSET." }
         registers[registerType.ordinal] = data
     }
@@ -21,16 +21,10 @@ open class Register {
         return testBit(registers[RegisterType.SR.ordinal].toInt(), getFlagOrdinal(type))
     }
 
-    operator fun set(type: FlagType, value: Boolean,
-    ) {
+    operator fun set(type: FlagType, value: Boolean) {
         assert(type != FlagType.NONE) { "$type type flag is not supported for FLAGSET." }
         val idx = RegisterType.SR.ordinal
         registers[idx] = handleBit(registers[idx].toInt(), getFlagOrdinal(type), value).toUByte()
-    }
-
-    @JvmName("kotlin-setPC")
-    fun setPC(v: UShort) {
-        PC = v
     }
 
     fun getFlagOrdinal(f: FlagType) = f.ordinal - 1

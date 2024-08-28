@@ -6,12 +6,13 @@ import javafx.scene.image.PixelWriter
 import javafx.scene.image.WritableImage
 import javafx.scene.paint.Color
 
+const val WIDTH = 256
+const val HEIGHT = 240
+
 class Screen(
     scale: Double = 2.0,
 ) {
-    private val WIDTH = 256
-    private val HEIGHT = 240
-    val canvas: Canvas = Canvas(WIDTH * scale, HEIGHT * scale)
+    private val canvas: Canvas = Canvas(WIDTH * scale, HEIGHT * scale)
     private val graphicsContext: GraphicsContext = canvas.graphicsContext2D
     private val buffer: WritableImage = WritableImage(WIDTH, HEIGHT)
     private val pixelWriter: PixelWriter = buffer.pixelWriter

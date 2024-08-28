@@ -15,19 +15,11 @@ class Fetcher {
             cycles = 2
         }
 
-        when (state) {
-            FetcherState.NT -> {
-                state = FetcherState.AT
-            }
-            FetcherState.AT -> {
-                state = FetcherState.BGLSBITS
-            }
-            FetcherState.BGLSBITS -> {
-                state = FetcherState.BGMSBITS
-            }
-            FetcherState.BGMSBITS -> {
-                state = FetcherState.NT
-            }
+        state = when (state) {
+            FetcherState.NT -> FetcherState.AT
+            FetcherState.AT -> FetcherState.BGLSBITS
+            FetcherState.BGLSBITS -> FetcherState.BGMSBITS
+            FetcherState.BGMSBITS -> FetcherState.NT
         }
     }
 }
