@@ -1,6 +1,6 @@
 package com.mooncell07.cecc.core
 
-enum class RegType {
+enum class RegisterType {
     NONE,
     A,
     X,

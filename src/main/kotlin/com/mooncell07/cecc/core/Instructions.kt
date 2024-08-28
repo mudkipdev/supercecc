@@ -3,42 +3,42 @@ package com.mooncell07.cecc.core
 data class INSTR(
     val insType: InstructionType,
     val addrMode: AddressingMode,
-    val regType: _RegType,
+    val registerType: RegisterType,
     val flagType: FlagType,
 )
 
-val INSTAB: Array<INSTR> = Array(256) { INSTR(InstructionType.NONE, AddressingMode.NONE, _RegType.NONE, FlagType.NONE) }
+val INSTAB: Array<INSTR> = Array(256) { INSTR(InstructionType.NONE, AddressingMode.NONE, RegisterType.NONE, FlagType.NONE) }
 
 fun buildInstructionTable() {
-    INSTAB[0x00] = INSTR(InstructionType.BRK, AddressingMode.IMPLIED, _RegType.NONE, FlagType.NONE)
-    INSTAB[0x01] = INSTR(InstructionType.ORA, AddressingMode.X_INDIRECT, _RegType.A, FlagType.NONE)
-    INSTAB[0x05] = INSTR(InstructionType.ORA, AddressingMode.ZEROPAGE, _RegType.A, FlagType.NONE)
-    INSTAB[0x06] = INSTR(InstructionType.ASL, AddressingMode.ZEROPAGE, _RegType.NONE, FlagType.C)
-    INSTAB[0x08] = INSTR(InstructionType.PUSH, AddressingMode.IMPLIED, _RegType.SR, FlagType.NONE)
-    INSTAB[0x09] = INSTR(InstructionType.ORA, AddressingMode.IMMEDIATE, _RegType.A, FlagType.NONE)
-    INSTAB[0x0A] = INSTR(InstructionType.ASL, AddressingMode.ACCUMULATOR, _RegType.NONE, FlagType.C)
-    INSTAB[0x0D] = INSTR(InstructionType.ORA, AddressingMode.ABSOLUTE, _RegType.A, FlagType.NONE)
-    INSTAB[0x0E] = INSTR(InstructionType.ASL, AddressingMode.ABSOLUTE, _RegType.NONE, FlagType.C)
+    INSTAB[0x00] = INSTR(InstructionType.BRK, AddressingMode.IMPLIED, RegisterType.NONE, FlagType.NONE)
+    INSTAB[0x01] = INSTR(InstructionType.ORA, AddressingMode.X_INDIRECT, RegisterType.A, FlagType.NONE)
+    INSTAB[0x05] = INSTR(InstructionType.ORA, AddressingMode.ZEROPAGE, RegisterType.A, FlagType.NONE)
+    INSTAB[0x06] = INSTR(InstructionType.ASL, AddressingMode.ZEROPAGE, RegisterType.NONE, FlagType.C)
+    INSTAB[0x08] = INSTR(InstructionType.PUSH, AddressingMode.IMPLIED, RegisterType.SR, FlagType.NONE)
+    INSTAB[0x09] = INSTR(InstructionType.ORA, AddressingMode.IMMEDIATE, RegisterType.A, FlagType.NONE)
+    INSTAB[0x0A] = INSTR(InstructionType.ASL, AddressingMode.ACCUMULATOR, RegisterType.NONE, FlagType.C)
+    INSTAB[0x0D] = INSTR(InstructionType.ORA, AddressingMode.ABSOLUTE, RegisterType.A, FlagType.NONE)
+    INSTAB[0x0E] = INSTR(InstructionType.ASL, AddressingMode.ABSOLUTE, RegisterType.NONE, FlagType.C)
 
-    INSTAB[0x10] = INSTR(InstructionType.BRCLR, AddressingMode.RELATIVE, _RegType.NONE, FlagType.N)
-    INSTAB[0x11] = INSTR(InstructionType.ORA, AddressingMode.INDIRECT_Y, _RegType.A, FlagType.NONE)
-    INSTAB[0x15] = INSTR(InstructionType.ORA, AddressingMode.ZEROPAGE_X, _RegType.A, FlagType.NONE)
-    INSTAB[0x16] = INSTR(InstructionType.ASL, AddressingMode.ZEROPAGE_X, _RegType.NONE, FlagType.C)
-    INSTAB[0x18] = INSTR(InstructionType.CLEAR, AddressingMode.IMPLIED, _RegType.NONE, FlagType.C)
-    INSTAB[0x19] = INSTR(InstructionType.ORA, AddressingMode.ABSOLUTE_Y, _RegType.A, FlagType.NONE)
-    INSTAB[0x1D] = INSTR(InstructionType.ORA, AddressingMode.ABSOLUTE_X, _RegType.A, FlagType.NONE)
-    INSTAB[0x1E] = INSTR(InstructionType.ASL, AddressingMode.ABSOLUTE_X, _RegType.NONE, FlagType.C)
+    INSTAB[0x10] = INSTR(InstructionType.BRCLR, AddressingMode.RELATIVE, RegisterType.NONE, FlagType.N)
+    INSTAB[0x11] = INSTR(InstructionType.ORA, AddressingMode.INDIRECT_Y, RegisterType.A, FlagType.NONE)
+    INSTAB[0x15] = INSTR(InstructionType.ORA, AddressingMode.ZEROPAGE_X, RegisterType.A, FlagType.NONE)
+    INSTAB[0x16] = INSTR(InstructionType.ASL, AddressingMode.ZEROPAGE_X, RegisterType.NONE, FlagType.C)
+    INSTAB[0x18] = INSTR(InstructionType.CLEAR, AddressingMode.IMPLIED, RegisterType.NONE, FlagType.C)
+    INSTAB[0x19] = INSTR(InstructionType.ORA, AddressingMode.ABSOLUTE_Y, RegisterType.A, FlagType.NONE)
+    INSTAB[0x1D] = INSTR(InstructionType.ORA, AddressingMode.ABSOLUTE_X, RegisterType.A, FlagType.NONE)
+    INSTAB[0x1E] = INSTR(InstructionType.ASL, AddressingMode.ABSOLUTE_X, RegisterType.NONE, FlagType.C)
 
-    INSTAB[0x20] = INSTR(InstructionType.JSR, AddressingMode.ABSOLUTE, _RegType.NONE, FlagType.NONE)
-    INSTAB[0x21] = INSTR(InstructionType.AND, AddressingMode.X_INDIRECT, _RegType.A, FlagType.NONE)
-    INSTAB[0x24] = INSTR(InstructionType.BIT, AddressingMode.ZEROPAGE, _RegType.SR, FlagType.NONE)
-    INSTAB[0x25] = INSTR(InstructionType.AND, AddressingMode.ZEROPAGE, _RegType.A, FlagType.NONE)
-    INSTAB[0x26] = INSTR(InstructionType.ROL, AddressingMode.ZEROPAGE, _RegType.NONE, FlagType.C)
-    INSTAB[0x28] = INSTR(InstructionType.PULL, AddressingMode.IMPLIED, _RegType.SR, FlagType.NONE)
-    INSTAB[0x29] = INSTR(InstructionType.AND, AddressingMode.IMMEDIATE, _RegType.A, FlagType.NONE)
-    INSTAB[0x2A] = INSTR(InstructionType.ROL, AddressingMode.ACCUMULATOR, _RegType.NONE, FlagType.C)
-    INSTAB[0x2C] = INSTR(InstructionType.BIT, AddressingMode.ABSOLUTE, _RegType.SR, FlagType.NONE)
-    INSTAB[0x2D] = INSTR(InstructionType.AND, AddressingMode.ABSOLUTE, _RegType.A, FlagType.NONE)
+    INSTAB[0x20] = INSTR(InstructionType.JSR, AddressingMode.ABSOLUTE, RegisterType.NONE, FlagType.NONE)
+    INSTAB[0x21] = INSTR(InstructionType.AND, AddressingMode.X_INDIRECT, RegisterType.A, FlagType.NONE)
+    INSTAB[0x24] = INSTR(InstructionType.BIT, AddressingMode.ZEROPAGE, RegisterType.SR, FlagType.NONE)
+    INSTAB[0x25] = INSTR(InstructionType.AND, AddressingMode.ZEROPAGE, RegisterType.A, FlagType.NONE)
+    INSTAB[0x26] = INSTR(InstructionType.ROL, AddressingMode.ZEROPAGE, RegisterType.NONE, FlagType.C)
+    INSTAB[0x28] = INSTR(InstructionType.PULL, AddressingMode.IMPLIED, RegisterType.SR, FlagType.NONE)
+    INSTAB[0x29] = INSTR(InstructionType.AND, AddressingMode.IMMEDIATE, RegisterType.A, FlagType.NONE)
+    INSTAB[0x2A] = INSTR(InstructionType.ROL, AddressingMode.ACCUMULATOR, RegisterType.NONE, FlagType.C)
+    INSTAB[0x2C] = INSTR(InstructionType.BIT, AddressingMode.ABSOLUTE, RegisterType.SR, FlagType.NONE)
+    INSTAB[0x2D] = INSTR(InstructionType.AND, AddressingMode.ABSOLUTE, RegisterType.A, FlagType.NONE)
     INSTAB[0x2E] = INSTR(InstructionType.ROL, AddressingMode.ABSOLUTE, RegisterType.NONE, FlagType.C)
 
     INSTAB[0x30] = INSTR(InstructionType.BRSET, AddressingMode.RELATIVE, RegisterType.NONE, FlagType.N)

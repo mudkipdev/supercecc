@@ -1,7 +1,7 @@
 package com.mooncell07.cecc.core
 
 abstract class AbstractDevice {
-    abstract val type: _DeviceType
+    abstract val type: DeviceType
     abstract val size: Int
     abstract val base: Int
 

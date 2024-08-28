@@ -38,7 +38,7 @@ class CPU(
     // ------------------------------------------------------------------------------------
 
     // Only works for instrs that use pre defined regs
-    private fun getIMPL(): UByte = this[instr.regType]
+    private fun getIMPL(): UByte = this[instr.registerType]
 
     private fun getIMM(): UByte = fetch()
 
@@ -110,7 +110,7 @@ class CPU(
         return effective
     }
 
-    private fun readSource(mode: _AddressingMode): UByte {
+    private fun readSource(mode: AddressingMode): UByte {
         if (mode == AddressingMode.INDIRECT || mode == AddressingMode.RELATIVE) {
             throw IllegalArgumentException("readSrc() does not support INDIRECT and RELATIVE modes.")
         }
@@ -125,7 +125,7 @@ class CPU(
         }
     }
 
-    private fun readSourceWord(mode: _AddressingMode): UShort {
+    private fun readSourceWord(mode: AddressingMode): UShort {
         val v = decoders[mode]!!.invoke()
         if (!pageCheck) {
             when (mode) {
@@ -160,7 +160,7 @@ class CPU(
         val v = (if (incr) (m + 1u) else (m - 1u)).toUByte()
         when (instr.addrMode) {
             AddressingMode.IMPLIED -> {
-                this[instr.regType] = v
+                this[instr.registerType] = v
                 bus.dummyRead(PC)
             }
             else -> {
@@ -182,13 +182,13 @@ class CPU(
 
     private fun opLOAD() {
         val m = readSource(instr.addrMode)
-        this[instr.regType] = m
+        this[instr.registerType] = m
         this[FlagType.N] = testBit(m.toInt(), 7)
         this[FlagType.Z] = m.toInt() == 0
     }
 
     private fun opSTORE() {
-        bus.write(readSourceWord(instr.addrMode), this[instr.regType])
+        bus.write(readSourceWord(instr.addrMode), this[instr.registerType])
     }
 
     private fun opTRANSFER() {
@@ -202,7 +202,7 @@ class CPU(
                 InstructionType.TSX -> this[RegisterType.SP]
                 else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
             }
-        this[instr.regType] = r
+        this[instr.registerType] = r
 
         if (instr.insType != InstructionType.TXS) {
             this[FlagType.N] = testBit(r.toInt(), 7)
@@ -240,7 +240,7 @@ class CPU(
     }
 
     private fun opCOMPARE() {
-        val r = this[instr.regType]
+        val r = this[instr.registerType]
         val m = readSource(instr.addrMode)
         val v = r - m
         this[FlagType.C] = r >= m
@@ -306,8 +306,8 @@ class CPU(
     }
 
     private fun opPUSH() {
-        var r = this[instr.regType]
-        if (instr.regType == RegisterType.SR) {
+        var r = this[instr.registerType]
+        if (instr.registerType == RegisterType.SR) {
             r = setBit(r.toInt(), getFlagOrdinal(FlagType.B)).toUByte()
         }
         bus.dummyRead(PC)
@@ -319,9 +319,9 @@ class CPU(
         pop(dummy = true)
 
         val r = pop()
-        this[instr.regType] = r
+        this[instr.registerType] = r
 
-        when (instr.regType) {
+        when (instr.registerType) {
             RegisterType.SR -> {
                 this[FlagType.B] = false
                 this[FlagType.UNUSED2_IGN] = true

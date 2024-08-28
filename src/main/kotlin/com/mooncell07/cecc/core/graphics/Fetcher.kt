@@ -1,9 +1,9 @@
 package com.mooncell07.cecc.core.graphics
 
-import com.mooncell07.cecc.core._FetcherState
+import com.mooncell07.cecc.core.FetcherState
 
 class Fetcher {
-    private var state: _FetcherState = _FetcherState.NT
+    private var state: FetcherState = FetcherState.NT
     private var cycles = 2
     private var shiftRegister = MutableList(0xF) { 0 }
 
@@ -16,17 +16,17 @@ class Fetcher {
         }
 
         when (state) {
-            _FetcherState.NT -> {
-                state = _FetcherState.AT
+            FetcherState.NT -> {
+                state = FetcherState.AT
             }
-            _FetcherState.AT -> {
-                state = _FetcherState.BGLSBITS
+            FetcherState.AT -> {
+                state = FetcherState.BGLSBITS
             }
-            _FetcherState.BGLSBITS -> {
-                state = _FetcherState.BGMSBITS
+            FetcherState.BGLSBITS -> {
+                state = FetcherState.BGMSBITS
             }
-            _FetcherState.BGMSBITS -> {
-                state = _FetcherState.NT
+            FetcherState.BGMSBITS -> {
+                state = FetcherState.NT
             }
         }
     }
