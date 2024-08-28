@@ -3,7 +3,7 @@ package com.mooncell07.cecc.core
 class CPU(
     private val bus: Bus,
 ) : Register() {
-    var instr: INSTR = INSTAB[0xEA]
+    var instruction: Instruction = instructionTable[0xEA]
     private var lastAddr: UShort = 0x0000u
     private var pageCheck: Boolean = false
 
@@ -37,8 +37,8 @@ class CPU(
     // Handlers for different addressing modes
     // ------------------------------------------------------------------------------------
 
-    // Only works for instrs that use pre defined regs
-    private fun getIMPL(): UByte = this[instr.registerType]
+    // Only works for instructions that use pre defined registers
+    private fun getIMPL(): UByte = this[instruction.registerType]
 
     private fun getIMM(): UByte = fetch()
 
@@ -91,9 +91,9 @@ class CPU(
     }
 
     private fun getXIND(): UShort {
-        val addr = fetch()
-        bus.dummyRead(addr.toUShort())
-        val base = (addr + this[RegisterType.X]) % 0x100u
+        val address = fetch()
+        bus.dummyRead(address.toUShort())
+        val base = (address + this[RegisterType.X]) % 0x100u
         val lo = bus.read(base.toUShort())
         val hiAddr = (base + 1u) % 0x100u
         val hi = bus.read(hiAddr.toUShort())
@@ -114,6 +114,7 @@ class CPU(
         if (mode == AddressingMode.INDIRECT || mode == AddressingMode.RELATIVE) {
             throw IllegalArgumentException("readSrc() does not support INDIRECT and RELATIVE modes.")
         }
+
         return when (mode) {
             AddressingMode.IMMEDIATE -> getIMM()
             AddressingMode.ACCUMULATOR -> getACC()
@@ -127,12 +128,14 @@ class CPU(
 
     private fun readSourceWord(mode: AddressingMode): UShort {
         val v = decoders[mode]!!.invoke()
+
         if (!pageCheck) {
             when (mode) {
                 AddressingMode.INDIRECT_Y, AddressingMode.ABSOLUTE_Y, AddressingMode.ABSOLUTE_X -> bus.dummyRead(v)
                 else -> {}
             }
         }
+
         return v
     }
 
@@ -156,21 +159,24 @@ class CPU(
     }
 
     private fun indcr(incr: Boolean) {
-        val m = readSource(instr.addrMode)
+        val m = readSource(instruction.addressingMode)
         val v = (if (incr) (m + 1u) else (m - 1u)).toUByte()
-        when (instr.addrMode) {
+
+        when (instruction.addressingMode) {
             AddressingMode.IMPLIED -> {
-                this[instr.registerType] = v
+                this[instruction.registerType] = v
                 bus.dummyRead(PC)
             }
+
             else -> {
-                if ((instr.addrMode == AddressingMode.ABSOLUTE_X) and !pageCheck) {
+                if ((instruction.addressingMode == AddressingMode.ABSOLUTE_X) and !pageCheck) {
                     bus.dummyRead(lastAddr)
                 }
                 bus.dummyWrite(lastAddr, m)
                 bus.write(lastAddr, v)
             }
         }
+
         this[FlagType.N] = testBit(v.toInt(), 7)
         this[FlagType.Z] = v.toInt() == 0
     }
@@ -180,31 +186,31 @@ class CPU(
     // Instruction Handlers
     // ------------------------------------------------------------------------------------
 
-    private fun opLOAD() {
-        val m = readSource(instr.addrMode)
-        this[instr.registerType] = m
+    private fun operationLoad() {
+        val m = readSource(instruction.addressingMode)
+        this[instruction.registerType] = m
         this[FlagType.N] = testBit(m.toInt(), 7)
         this[FlagType.Z] = m.toInt() == 0
     }
 
-    private fun opSTORE() {
-        bus.write(readSourceWord(instr.addrMode), this[instr.registerType])
+    private fun operationStore() {
+        bus.write(readSourceWord(instruction.addressingMode), this[instruction.registerType])
     }
 
-    private fun opTRANSFER() {
+    private fun operationTransfer() {
         val r =
-            when (instr.insType) {
+            when (instruction.instructionType) {
                 InstructionType.TXA -> this[RegisterType.X]
                 InstructionType.TYA -> this[RegisterType.Y]
                 InstructionType.TXS -> this[RegisterType.X]
                 InstructionType.TAY -> this[RegisterType.A]
                 InstructionType.TAX -> this[RegisterType.A]
                 InstructionType.TSX -> this[RegisterType.SP]
-                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instruction.instructionType}")
             }
-        this[instr.registerType] = r
+        this[instruction.registerType] = r
 
-        if (instr.insType != InstructionType.TXS) {
+        if (instruction.instructionType != InstructionType.TXS) {
             this[FlagType.N] = testBit(r.toInt(), 7)
             this[FlagType.Z] = r.toInt() == 0
         }
@@ -212,23 +218,23 @@ class CPU(
         bus.dummyRead(PC)
     }
 
-    private fun opSET() {
-        this[instr.flagType] = true
+    private fun operationSet() {
+        this[instruction.flagType] = true
         bus.dummyRead(PC)
     }
 
-    private fun opCLEAR() {
-        this[instr.flagType] = false
+    private fun operationClear() {
+        this[instruction.flagType] = false
         bus.dummyRead(PC)
     }
 
-    private fun opBRANCH() {
-        val offset = readSourceWord(instr.addrMode)
+    private fun operationBranch() {
+        val offset = readSourceWord(instruction.addressingMode)
         val f =
-            when (instr.insType) {
-                InstructionType.BRSET -> this[instr.flagType]
-                InstructionType.BRCLR -> !this[instr.flagType]
-                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+            when (instruction.instructionType) {
+                InstructionType.BRSET -> this[instruction.flagType]
+                InstructionType.BRCLR -> !this[instruction.flagType]
+                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instruction.instructionType}")
             }
 
         if (f) {
@@ -240,8 +246,8 @@ class CPU(
     }
 
     private fun opCOMPARE() {
-        val r = this[instr.registerType]
-        val m = readSource(instr.addrMode)
+        val r = this[instruction.registerType]
+        val m = readSource(instruction.addressingMode)
         val v = r - m
         this[FlagType.C] = r >= m
         this[FlagType.Z] = r == m
@@ -250,11 +256,11 @@ class CPU(
 
     private fun opLOGICAL() {
         val v =
-            when (instr.insType) {
-                InstructionType.AND -> this[RegisterType.A] and readSource(instr.addrMode)
-                InstructionType.ORA -> this[RegisterType.A] or readSource(instr.addrMode)
-                InstructionType.EOR -> this[RegisterType.A] xor readSource(instr.addrMode)
-                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+            when (instruction.instructionType) {
+                InstructionType.AND -> this[RegisterType.A] and readSource(instruction.addressingMode)
+                InstructionType.ORA -> this[RegisterType.A] or readSource(instruction.addressingMode)
+                InstructionType.EOR -> this[RegisterType.A] xor readSource(instruction.addressingMode)
+                else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instruction.instructionType}")
             }
         this[RegisterType.A] = v
         this[FlagType.N] = testBit(v.toInt(), 7)
@@ -262,10 +268,10 @@ class CPU(
     }
 
     private fun opSHIFT() {
-        val m = readSource(instr.addrMode).toUInt()
+        val m = readSource(instruction.addressingMode).toUInt()
         val v: UInt
 
-        when (instr.insType) {
+        when (instruction.instructionType) {
             InstructionType.ASL -> {
                 v = m shl 1
                 this[FlagType.C] = testBit(m.toInt(), 7)
@@ -284,16 +290,16 @@ class CPU(
                 v = (m shr 1) or (c.toUInt() shl 7)
                 this[FlagType.C] = testBit(m.toInt(), 0)
             }
-            else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instr.insType}")
+            else -> throw IllegalArgumentException("Unsupported Instruction Type: ${instruction.instructionType}")
         }
 
-        when (instr.addrMode) {
+        when (instruction.addressingMode) {
             AddressingMode.ACCUMULATOR -> {
                 bus.dummyRead(PC)
                 this[RegisterType.A] = v.toUByte()
             }
             else -> {
-                if ((instr.addrMode == AddressingMode.ABSOLUTE_X) and !pageCheck) {
+                if ((instruction.addressingMode == AddressingMode.ABSOLUTE_X) and !pageCheck) {
                     bus.dummyRead(lastAddr)
                 }
                 bus.dummyWrite(lastAddr, m.toUByte())
@@ -306,8 +312,8 @@ class CPU(
     }
 
     private fun opPUSH() {
-        var r = this[instr.registerType]
-        if (instr.registerType == RegisterType.SR) {
+        var r = this[instruction.registerType]
+        if (instruction.registerType == RegisterType.SR) {
             r = setBit(r.toInt(), getFlagOrdinal(FlagType.B)).toUByte()
         }
         bus.dummyRead(PC)
@@ -319,9 +325,9 @@ class CPU(
         pop(dummy = true)
 
         val r = pop()
-        this[instr.registerType] = r
+        this[instruction.registerType] = r
 
-        when (instr.registerType) {
+        when (instruction.registerType) {
             RegisterType.SR -> {
                 this[FlagType.B] = false
                 this[FlagType.UNUSED2_IGN] = true
@@ -340,7 +346,7 @@ class CPU(
 
     private fun opNOP() = bus.dummyRead(PC)
 
-    private fun opJMP() = setPC(readSourceWord(instr.addrMode))
+    private fun opJMP() = setPC(readSourceWord(instruction.addressingMode))
 
     private fun opJSR() {
         val lo = fetch()
@@ -353,7 +359,7 @@ class CPU(
 
     private fun opADC() {
         val a = this[RegisterType.A]
-        val m = readSource(instr.addrMode)
+        val m = readSource(instruction.addressingMode)
         val c = (if (this[FlagType.C]) 1u else 0u)
         val v = (m + a + c).toInt()
         this[RegisterType.A] = v.toUByte()
@@ -365,7 +371,7 @@ class CPU(
 
     private fun opSBC() {
         val a = this[RegisterType.A]
-        val m = readSource(instr.addrMode)
+        val m = readSource(instruction.addressingMode)
         val c = (if (this[FlagType.C]) 0u else 1u)
         val v = (a - m - c).toInt()
         this[RegisterType.A] = v.toUByte()
@@ -377,7 +383,7 @@ class CPU(
 
     private fun opBIT() {
         val a = this[RegisterType.A]
-        val m = readSource(instr.addrMode)
+        val m = readSource(instruction.addressingMode)
         this[FlagType.Z] = (a and m).toInt() == 0
         this[FlagType.N] = testBit(m.toInt(), 7)
         this[FlagType.V] = testBit(m.toInt(), 6)
@@ -423,59 +429,57 @@ class CPU(
     // ------------------------------------------------------------------------------------
 
     fun tick() {
-        instr = INSTAB[fetch().toInt()]
-        assert(instr.insType != InstructionType.NONE) { "${instr.insType} is an illegal instruction type." }
-        executors[instr.insType]?.invoke()
+        instruction = instructionTable[fetch().toInt()]
+        assert(instruction.instructionType != InstructionType.NONE) { "${instruction.instructionType} is an illegal instruction type." }
+        executors[instruction.instructionType]?.invoke()
     }
 
-    private val executors: Map<InstructionType, () -> Unit> =
-        mapOf(
-            InstructionType.LOAD to { opLOAD() },
-            InstructionType.STORE to { opSTORE() },
-            InstructionType.JMP to { opJMP() },
-            InstructionType.JSR to { opJSR() },
-            InstructionType.NOP to { opNOP() },
-            InstructionType.SET to { opSET() },
-            InstructionType.BRCLR to { opBRANCH() },
-            InstructionType.BRSET to { opBRANCH() },
-            InstructionType.CLEAR to { opCLEAR() },
-            InstructionType.TAX to { opTRANSFER() },
-            InstructionType.TAY to { opTRANSFER() },
-            InstructionType.TSX to { opTRANSFER() },
-            InstructionType.TXA to { opTRANSFER() },
-            InstructionType.TYA to { opTRANSFER() },
-            InstructionType.TXS to { opTRANSFER() },
-            InstructionType.PUSH to { opPUSH() },
-            InstructionType.PULL to { opPULL() },
-            InstructionType.INCREMENT to { opINCREMENT() },
-            InstructionType.DECREMENT to { opDECREMENT() },
-            InstructionType.ADC to { opADC() },
-            InstructionType.SBC to { opSBC() },
-            InstructionType.AND to { opLOGICAL() },
-            InstructionType.EOR to { opLOGICAL() },
-            InstructionType.ORA to { opLOGICAL() },
-            InstructionType.ASL to { opSHIFT() },
-            InstructionType.LSR to { opSHIFT() },
-            InstructionType.ROL to { opSHIFT() },
-            InstructionType.ROR to { opSHIFT() },
-            InstructionType.COMPARE to { opCOMPARE() },
-            InstructionType.BIT to { opBIT() },
-            InstructionType.BRK to { opBRK() },
-            InstructionType.RTI to { opRTI() },
-            InstructionType.RTS to { opRTS() },
-        )
+    private val executors: Map<InstructionType, () -> Unit> = mapOf(
+        InstructionType.LOAD to { operationLoad() },
+        InstructionType.STORE to { operationStore() },
+        InstructionType.JMP to { opJMP() },
+        InstructionType.JSR to { opJSR() },
+        InstructionType.NOP to { opNOP() },
+        InstructionType.SET to { operationSet() },
+        InstructionType.BRCLR to { operationBranch() },
+        InstructionType.BRSET to { operationBranch() },
+        InstructionType.CLEAR to { operationClear() },
+        InstructionType.TAX to { operationTransfer() },
+        InstructionType.TAY to { operationTransfer() },
+        InstructionType.TSX to { operationTransfer() },
+        InstructionType.TXA to { operationTransfer() },
+        InstructionType.TYA to { operationTransfer() },
+        InstructionType.TXS to { operationTransfer() },
+        InstructionType.PUSH to { opPUSH() },
+        InstructionType.PULL to { opPULL() },
+        InstructionType.INCREMENT to { opINCREMENT() },
+        InstructionType.DECREMENT to { opDECREMENT() },
+        InstructionType.ADC to { opADC() },
+        InstructionType.SBC to { opSBC() },
+        InstructionType.AND to { opLOGICAL() },
+        InstructionType.EOR to { opLOGICAL() },
+        InstructionType.ORA to { opLOGICAL() },
+        InstructionType.ASL to { opSHIFT() },
+        InstructionType.LSR to { opSHIFT() },
+        InstructionType.ROL to { opSHIFT() },
+        InstructionType.ROR to { opSHIFT() },
+        InstructionType.COMPARE to { opCOMPARE() },
+        InstructionType.BIT to { opBIT() },
+        InstructionType.BRK to { opBRK() },
+        InstructionType.RTI to { opRTI() },
+        InstructionType.RTS to { opRTS() }
+    )
 
-    private val decoders: Map<AddressingMode, () -> UShort> =
-        mapOf(
-            AddressingMode.ABSOLUTE to { getABS() },
-            AddressingMode.ABSOLUTE_X to { getABSX() },
-            AddressingMode.ABSOLUTE_Y to { getABSY() },
-            AddressingMode.X_INDIRECT to { getXIND() },
-            AddressingMode.INDIRECT_Y to { getINDY() },
-            AddressingMode.ZEROPAGE to { getZP() },
-            AddressingMode.ZEROPAGE_X to { getZPX() },
-            AddressingMode.ZEROPAGE_Y to { getZPY() },
-            AddressingMode.RELATIVE to { getREL() },
-            AddressingMode.INDIRECT to { getIND() },
-        )
+    private val decoders: Map<AddressingMode, () -> UShort> = mapOf(
+        AddressingMode.ABSOLUTE to { getABS() },
+        AddressingMode.ABSOLUTE_X to { getABSX() },
+        AddressingMode.ABSOLUTE_Y to { getABSY() },
+        AddressingMode.X_INDIRECT to { getXIND() },
+        AddressingMode.INDIRECT_Y to { getINDY() },
+        AddressingMode.ZEROPAGE to { getZP() },
+        AddressingMode.ZEROPAGE_X to { getZPX() },
+        AddressingMode.ZEROPAGE_Y to { getZPY() },
+        AddressingMode.RELATIVE to { getREL() },
+        AddressingMode.INDIRECT to { getIND() }
+    )
 }

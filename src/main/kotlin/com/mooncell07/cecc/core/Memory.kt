@@ -15,7 +15,7 @@ class Stack : Device() {
 }
 
 class RAMEx : Device() {
-    override val type = DeviceType.RAMEx
+    override val type = DeviceType.RAMEX
     override val size = 0x05FF
     override val base = 0x0200
     override val area: UByteArray = UByteArray(size + 1) { 0u }

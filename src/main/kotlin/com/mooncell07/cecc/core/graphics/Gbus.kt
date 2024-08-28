@@ -32,13 +32,11 @@ class GBUS(
         if (address < 0x2000u) {
             return chrrom.read(address)
         }
+
         return 0xFFu
     }
 
-    override fun write(
-        address: UShort,
-        data: UByte,
-    ) {
+    override fun write(address: UShort, data: UByte) {
         if (address < 0x2000u) {
             chrrom.write(address, data)
         }

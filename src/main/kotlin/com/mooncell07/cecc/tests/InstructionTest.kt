@@ -29,10 +29,10 @@ data class State(
 }
 
 data class Test(
-    @SerializedName("name") val name: String,
-    @SerializedName("initial") val initial: State,
-    @SerializedName("final") val final: State,
-    @SerializedName("cycles") val cycles: List<List<Any>>,
+    val name: String,
+    val initial: State,
+    val final: State,
+    val cycles: List<List<Any>>,
 )
 
 class InstructionTest(
@@ -48,7 +48,7 @@ class InstructionTest(
         tests = gson.fromJson(file.readText(), Array<Test>::class.java)
     }
 
-    private fun setEmuState(test: Test) {
+    private fun setEmulatorState(test: Test) {
         cpu.PC = test.initial.PC
         cpu[RegisterType.A] = test.initial.A
         cpu[RegisterType.X] = test.initial.X
@@ -59,6 +59,7 @@ class InstructionTest(
         for (ramState in test.initial.ram) {
             bus.write(ramState[0].toUShort(), ramState[1].toUByte())
         }
+
         debugDevice.cycles.clear()
     }
 
@@ -85,10 +86,7 @@ class InstructionTest(
             )
         }}"
 
-    private fun compareStates(
-        index: Int,
-        test: Test,
-    ) {
+    private fun compareStates(index: Int, test: Test, ) {
         val dataTest = test.final != after
         val cycleTest = (debugDevice.cycles != test.cycles)
         if (dataTest or cycleTest) {
@@ -122,10 +120,7 @@ class InstructionTest(
         }
     }
 
-    private fun compare(
-        index: Int,
-        test: Test,
-    ) {
+    private fun compare(index: Int, test: Test, ) {
         parseState(test)
         compareStates(index, test)
     }
@@ -133,7 +128,7 @@ class InstructionTest(
     fun run() {
         for ((i, test) in tests.withIndex()) {
             debugDevice.stopLogging()
-            setEmuState(test)
+            setEmulatorState(test)
             debugDevice.startLogging()
             cpu.tick()
             debugDevice.stopLogging()
@@ -163,5 +158,6 @@ fun main(args: Array<String>) {
         val iTest = InstructionTest(File(args[0]))
         iTest.run()
     }
+
     println("\nALL TESTS PASSED!")
 }

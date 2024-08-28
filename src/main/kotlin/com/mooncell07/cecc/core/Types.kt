@@ -28,15 +28,21 @@ enum class DeviceType {
     CARTRIDGE,
     ZEROPAGE,
     STACK,
-    RAMEx,
+    RAMEX,
     CHRROM,
     GBUS,
     PPUREGISTERS
 }
 
 enum class PPURegisterType {
-    PPUCTRL, PPUMASK, PPUSTATUS, OAMADDR,
-    OAMDATA, PPUSCROLL, PPUADDR, PPUDATA,
+    PPUCTRL,
+    PPUMASK,
+    PPUSTATUS,
+    OAMADDR,
+    OAMDATA,
+    PPUSCROLL,
+    PPUADDR,
+    PPUDATA,
 }
 
 enum class FetcherState {

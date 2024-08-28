@@ -4,7 +4,7 @@ import com.mooncell07.cecc.core.PPURegisters
 import com.mooncell07.cecc.core.PPUState
 
 class PPU(
-    private val regs: PPURegisters,
+    private val registers: PPURegisters,
 ) {
     private var dots = 0
     private var scanline = 0
