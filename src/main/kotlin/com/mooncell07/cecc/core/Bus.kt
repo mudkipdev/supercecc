@@ -4,7 +4,7 @@ class Bus(
     private val clock: Clock,
     private vararg val deviceMap: AbstractDevice,
 ) : AbstractDevice() {
-    override val type = DT.BUS
+    override val type = DeviceType.BUS
     override val size = 0xFFFF
     override val base = 0x0000
 

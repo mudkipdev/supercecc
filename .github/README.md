@@ -1,2 +1,2 @@
-# 3E33.nes
-A Nintendo Entertainment System Emulator in Kotlin.
+# supercecc
+A Nintendo Entertainment System emulator written in Kotlin.

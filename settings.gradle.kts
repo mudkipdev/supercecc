@@ -1,1 +1,1 @@
-rootProject.name = "cecc"
+rootProject.name = "supercecc"

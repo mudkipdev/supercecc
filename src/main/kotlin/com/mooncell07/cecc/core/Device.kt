@@ -1,7 +1,7 @@
 package com.mooncell07.cecc.core
 
 abstract class AbstractDevice {
-    abstract val type: DeviceType
+    abstract val type: _DeviceType
     abstract val size: Int
     abstract val base: Int
 
@@ -14,7 +14,7 @@ abstract class AbstractDevice {
 }
 
 open class Device : AbstractDevice() {
-    override val type = DT.EMPTY
+    override val type = DeviceType.EMPTY
     override val size = -1
     override val base = -1
     open val area: UByteArray = ubyteArrayOf()

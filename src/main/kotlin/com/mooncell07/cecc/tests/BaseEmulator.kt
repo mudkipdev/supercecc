@@ -4,7 +4,7 @@ import com.mooncell07.cecc.core.*
 import com.mooncell07.cecc.core.graphics.PPU
 
 class DebugDevice : AbstractDevice() {
-    override val type = DT.DEBUG
+    override val type = DeviceType.DEBUG
     override val size = 0xFFFF
     override val base = 0x0000
 

@@ -6,30 +6,30 @@ open class Register {
     // First value is unused.
     private val regs: Array<UByte> = arrayOf(0x00u, 0x00u, 0x00u, 0x00u, 0xFDu, 0x24u)
 
-    operator fun get(regType: RT): UByte {
-        assert(regType != RT.NONE) { "$regType type register is not supported for REGGET." }
+    operator fun get(regType: RegisterType): UByte {
+        assert(regType != RegisterType.NONE) { "$regType type register is not supported for REGGET." }
         return regs[regType.ordinal]
     }
 
     operator fun set(
-        regType: RT,
+        regType: RegisterType,
         data: UByte,
     ) {
-        assert(regType != RT.NONE) { "$regType type register is not supported for REGSET." }
+        assert(regType != RegisterType.NONE) { "$regType type register is not supported for REGSET." }
         regs[regType.ordinal] = data
     }
 
-    operator fun get(flagType: FT): Boolean {
-        assert(flagType != FT.NONE) { "$flagType type flag is not supported for FLAGGET." }
-        return testBit(regs[RT.SR.ordinal].toInt(), getFlagOrdinal(flagType))
+    operator fun get(flagType: FlagType): Boolean {
+        assert(flagType != FlagType.NONE) { "$flagType type flag is not supported for FLAGGET." }
+        return testBit(regs[RegisterType.SR.ordinal].toInt(), getFlagOrdinal(flagType))
     }
 
     operator fun set(
-        flagType: FT,
+        flagType: FlagType,
         flagv: Boolean,
     ) {
-        assert(flagType != FT.NONE) { "$flagType type flag is not supported for FLAGSET." }
-        val idx = RT.SR.ordinal
+        assert(flagType != FlagType.NONE) { "$flagType type flag is not supported for FLAGSET." }
+        val idx = RegisterType.SR.ordinal
         regs[idx] = handleBit(regs[idx].toInt(), getFlagOrdinal(flagType), flagv).toUByte()
     }
 
@@ -38,7 +38,7 @@ open class Register {
         PC = v
     }
 
-    fun getFlagOrdinal(f: FT) = f.ordinal - 1
+    fun getFlagOrdinal(f: FlagType) = f.ordinal - 1
 
     fun checkOverflow(
         opA: UByte,
@@ -50,9 +50,9 @@ open class Register {
         val opBMSb = testBit(opB.toInt(), 7)
         val opRes = testBit(res.toInt(), 7)
         if (sbc) {
-            this[FT.V] = (opAMSb != opBMSb) and (opRes == opBMSb)
+            this[FlagType.V] = (opAMSb != opBMSb) and (opRes == opBMSb)
             return
         }
-        this[FT.V] = (opAMSb == opBMSb) and (opRes != opAMSb)
+        this[FlagType.V] = (opAMSb == opBMSb) and (opRes != opAMSb)
     }
 }

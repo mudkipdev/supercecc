@@ -50,11 +50,11 @@ class InstructionTest(
 
     private fun setEmuState(test: Test) {
         cpu.PC = test.initial.PC
-        cpu[RT.A] = test.initial.A
-        cpu[RT.X] = test.initial.X
-        cpu[RT.Y] = test.initial.Y
-        cpu[RT.SP] = test.initial.SP
-        cpu[RT.SR] = test.initial.SR
+        cpu[RegisterType.A] = test.initial.A
+        cpu[RegisterType.X] = test.initial.X
+        cpu[RegisterType.Y] = test.initial.Y
+        cpu[RegisterType.SP] = test.initial.SP
+        cpu[RegisterType.SR] = test.initial.SR
 
         for (ramState in test.initial.ram) {
             bus.write(ramState[0].toUShort(), ramState[1].toUByte())
@@ -64,11 +64,11 @@ class InstructionTest(
 
     private fun parseState(test: Test) {
         after.PC = cpu.PC
-        after.A = cpu[RT.A]
-        after.X = cpu[RT.X]
-        after.Y = cpu[RT.Y]
-        after.SP = cpu[RT.SP]
-        after.SR = cpu[RT.SR]
+        after.A = cpu[RegisterType.A]
+        after.X = cpu[RegisterType.X]
+        after.Y = cpu[RegisterType.Y]
+        after.SP = cpu[RegisterType.SP]
+        after.SR = cpu[RegisterType.SR]
 
         after.ram = MutableList(test.final.ram.size) { listOf(2) }
         for ((i, ramState) in test.final.ram.withIndex()) {

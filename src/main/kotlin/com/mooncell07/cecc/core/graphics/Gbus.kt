@@ -2,13 +2,13 @@ package com.mooncell07.cecc.core.graphics
 
 import com.mooncell07.cecc.core.AbstractDevice
 import com.mooncell07.cecc.core.Cartridge
-import com.mooncell07.cecc.core.DT
+import com.mooncell07.cecc.core.DeviceType
 import com.mooncell07.cecc.core.Device
 
 class CHRROM(
     private val cart: Cartridge,
 ) : Device() {
-    override val type = DT.CHRROM
+    override val type = DeviceType.CHRROM
     override val size = 0x1FFF
     override val base = 0x0000
     override val area: UByteArray = UByteArray(size + 1)
@@ -24,7 +24,7 @@ class CHRROM(
 class GBUS(
     private val chrrom: CHRROM,
 ) : AbstractDevice() {
-    override val type = DT.GBUS
+    override val type = DeviceType.GBUS
     override val size = 0x3FFF
     override val base = 0x0000
 

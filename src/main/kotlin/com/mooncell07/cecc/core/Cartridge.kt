@@ -5,7 +5,7 @@ import java.io.File
 class Cartridge(
     filepath: String,
 ) : AbstractDevice() {
-    override val type = DT.CARTRIDGE
+    override val type = DeviceType.CARTRIDGE
     override val size = 0x3FFF
     override val base = 0xC000
     val area: UByteArray = File(filepath).readBytes().toUByteArray()

@@ -1,14 +1,14 @@
 package com.mooncell07.cecc.core.graphics
 
 import com.mooncell07.cecc.core.PPURegisters
-import com.mooncell07.cecc.core.PPUState
+import com.mooncell07.cecc.core._PPUState
 
 class PPU(
     private val regs: PPURegisters,
 ) {
     private var dots = 0
     private var scanline = 0
-    private var state: PPUState = PPUState.PRERENDER
+    private var state: _PPUState = _PPUState.PRERENDER
     private val fetcher: Fetcher = Fetcher()
 
     fun tick() {
@@ -19,18 +19,18 @@ class PPU(
         }
 
         when (state) {
-            PPUState.RENDER -> {
-                if (scanline == 240) state = PPUState.POSTRENDER
+            _PPUState.RENDER -> {
+                if (scanline == 240) state = _PPUState.POSTRENDER
             }
-            PPUState.POSTRENDER -> {
-                if (scanline == 241) state = PPUState.VBLANK
+            _PPUState.POSTRENDER -> {
+                if (scanline == 241) state = _PPUState.VBLANK
             }
-            PPUState.VBLANK -> {
-                if (scanline == 261) state = PPUState.PRERENDER
+            _PPUState.VBLANK -> {
+                if (scanline == 261) state = _PPUState.PRERENDER
             }
-            PPUState.PRERENDER -> {
+            _PPUState.PRERENDER -> {
                 if (scanline == 262) {
-                    state = PPUState.RENDER
+                    state = _PPUState.RENDER
                     scanline = 0
                 }
             }

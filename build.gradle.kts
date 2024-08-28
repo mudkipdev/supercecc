@@ -6,7 +6,7 @@ plugins {
 
 javafx {
     version = "22.0.1"
-    modules = mutableListOf("javafx.controls", "javafx.fxml")
+    modules = listOf("javafx.controls", "javafx.fxml")
 }
 
 application.mainClass = "com.mooncell07.cecc.MainKt"
@@ -15,6 +15,7 @@ version = "0.1.0"
 
 kotlin {
     jvmToolchain(21)
+
     sourceSets {
         all {
             languageSettings.optIn("kotlin.ExperimentalUnsignedTypes")
